@@ -1,0 +1,38 @@
+.fixture-background{
+    background-color: rgba(128, 128, 128, 0.466);
+}
+/* Custom styles for the match details modal */
+.match-details-modal {
+    backdrop-filter: blur(4px);
+  }
+  
+  .set-row-completed {
+    background: linear-gradient(90deg, #dcfce7 0%, #bbf7d0 100%);
+    border-color: #22c55e;
+  }
+  
+  .set-row-ongoing {
+    background: #ffffff;
+    border-color: #e5e7eb;
+  }
+  
+  .score-input:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  .loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f4f6;
+    border-radius: 50%;
+    border-top-color: #3b82f6;
+    animation: spin 1s ease-in-out infinite;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
