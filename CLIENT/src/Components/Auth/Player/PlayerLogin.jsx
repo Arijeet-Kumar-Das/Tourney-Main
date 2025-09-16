@@ -75,6 +75,10 @@ const PlayerLogin = () => {
   return (
     <div className="player-login-container">
       <div className="player-login-wrapper">
+      <button className="player-back-button" onClick={()=>{navigate('/')}}>
+          <IoChevronBack className="player-back-icon" />
+          Go to Home
+        </button>
         <button className="player-back-button" onClick={()=>{navigate('/roleSelection')}}>
           <IoChevronBack className="player-back-icon" />
           Back to role selection

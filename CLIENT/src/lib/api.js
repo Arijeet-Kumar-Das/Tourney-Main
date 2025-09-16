@@ -54,6 +54,19 @@ export const generateFixtures = async (tournamentId, eventId) => {
   return fixtures;
 };
 
+// Generate fixtures with manual seeding order
+export const generateFixturesWithOrder = async (tournamentId, eventId, seedOrder = []) => {
+  const body = { eventId, seedOrder };
+  const { fixtures } = await defaultFetch(
+    `${BASE_URL}/api/organizer/fixtures/${tournamentId}/generate`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    }
+  );
+  return fixtures;
+};
+
 export const fetchStandings = async (tournamentId, eventId) => {
   const url = new URL(`${BASE_URL}/api/organizer/fixtures/${tournamentId}/standings`);
   if (eventId) url.searchParams.append("eventId", eventId);

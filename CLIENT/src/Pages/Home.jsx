@@ -24,11 +24,11 @@ const Home = () => {
 
 
   return (
-    <>
+    <div className="min-h-screen" style={{backgroundColor: '#F8F2F2'}}>
       <HeroSection/>
       <HomeTournamentsSection/>
       <Footer/>
-    </>
+    </div>
   )
 }
 

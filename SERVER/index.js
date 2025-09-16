@@ -14,6 +14,7 @@ import bookingRoutes from './Routes/Player/bookingRoutes.js';
 import OrganizerRoute from './Routes/Organizer/OrganizerRoute.js';
 import PlayerRoute from './Routes/Player/PlayerRoute.js';
 import adminRoutes from './Routes/Admin/AdminRoutes.js';
+import paymentRoutes from './Routes/Player/paymentRoute.js';
 
 const app = express();
 
@@ -73,6 +74,9 @@ app.use("/api/organizer", OrganizerRoute);
 app.use("/api/player", PlayerRoute);
 app.use("/api/admin", adminRoutes);
 app.use("/admin", adminRoutes);
+
+// Payment routes
+app.use('/api/payments', paymentRoutes);
 
 // Serve frontend in production
 if (process.env.NODE_ENV === "production") {

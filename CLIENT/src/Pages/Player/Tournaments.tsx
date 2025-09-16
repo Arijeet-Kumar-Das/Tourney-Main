@@ -140,6 +140,10 @@ const Tournaments = () => {
   const [pageLoaded, setPageLoaded] = useState(false);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
     // Set page loaded to true after a short delay to trigger animations
     const timer = setTimeout(() => {
       setPageLoaded(true);
@@ -181,6 +185,15 @@ const Tournaments = () => {
         try {
           data = JSON.parse(responseText);
           console.log('Parsed API Response:', data);
+          
+          
+          if (data.success && Array.isArray(data.message)) {
+            data.message.sort((a: any, b: any) => {
+              const dateA = new Date(a.createdAt || 0).getTime();
+              const dateB = new Date(b.createdAt || 0).getTime();
+              return dateB - dateA; 
+            });
+          }
         } catch (parseError) {
           console.error('Failed to parse API response:', parseError);
           throw new Error('Invalid JSON response from server');
@@ -375,7 +388,7 @@ const Tournaments = () => {
       return (
         <div 
           key={tournament.id} 
-          className={`${pageLoaded ? 'animate-fade-in card-animation' : 'opacity-0'}`}
+          className={`h-full ${pageLoaded ? 'animate-fade-in card-animation' : 'opacity-0'}`}
           style={{ animationDelay: `${0.2 + (index * 0.1)}s` }}
         >
           <TournamentCard
@@ -388,6 +401,7 @@ const Tournaments = () => {
             imageUrl={tournament.imageUrl}
             sport={tournament.sport}
             description={tournament.description}
+            status={tournament.status || categorizeDate(tournament.date)}
           />
         </div>
       );
@@ -395,12 +409,12 @@ const Tournaments = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-gray-100">
+    <div className="min-h-screen" style={{backgroundColor: '#F8F2F2'}}>
       {/* Add the animation styles */}
       <style>{animationStyles}</style>
       
       <Navigation />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-20">
       
         <div className={`text-center mb-12 ${pageLoaded ? 'animate-fade-in' : 'opacity-0'}`}>
           
@@ -504,9 +518,10 @@ const Tournaments = () => {
               </div>
             </div>
 
-            <div className={`grid grid-cols-1 gap-6 max-w-2xl mx-auto ${pageLoaded ? 'animate-fade-in delay-200' : 'opacity-0'}`}>
-              {renderTournamentCards()}
-            </div>
+            <div className={`grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-10 max-w-7xl mx-auto items-stretch  ${pageLoaded ? 'animate-fade-in delay-200' : 'opacity-0'}`}>
+  {renderTournamentCards()}
+</div>
+
 
             {filteredTournaments.length === 0 && (
               <div className={`text-center py-12 ${pageLoaded ? 'animate-fade-in delay-200' : 'opacity-0'}`}>

@@ -1,21 +1,37 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Loader2 } from "lucide-react";
+import { PlayerContext } from "@/Contexts/PlayerContext/PlayerContext";
+import { useNavigate } from "react-router-dom";
+import { AlertCircle } from "lucide-react";
+
 
 const backend_URL = import.meta.env.VITE_BACKEND_URL;
 
 const RegistrationForm = () => {
+  const { backend_URL } = useContext(PlayerContext);
   const location = useLocation();
-  const eventName = location.state?.eventName || "Event";
-  const entryFee = location.state?.entryFee || 0;
-  const TournamentId = location.state?.TournamentId;
-  const eventId = location.state?.eventId;
+  const { tournamentId: urlTournamentId } = useParams();
+  
+  // State for events and loading
+  const [events, setEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  
+  // Get tournament ID from URL or location state
+  const TournamentId = urlTournamentId || location.state?.TournamentId;
+  
+  // Get event details from selected event or location state
+  const eventName = selectedEvent?.name || selectedEvent?.eventName || location.state?.eventName || "Event";
+  const entryFee = selectedEvent?.entryFee || location.state?.entryFee || 0;
+  const eventId = selectedEvent?._id || location.state?.eventId;
+  const navigate = useNavigate();
 
   const [customFields, setCustomFields] = useState([]);
   const [members, setMembers] = useState([
@@ -31,14 +47,78 @@ const RegistrationForm = () => {
   const [loading, setLoading] = useState(true);
   const [teamName, setTeamName] = useState("");
 
-  // Fetch customFields from backend
-  React.useEffect(() => {
-    const fetchTournament = async () => {
+  // Fetch events for the tournament
+  useEffect(() => {
+    const fetchEvents = async () => {
       if (!TournamentId) return;
+      setLoadingEvents(true);
       try {
+        const response = await fetch(`${backend_URL}/api/player/tournaments/${TournamentId}/events`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          setEvents(data.message || []);
+          // If there's an eventId in location state, select it
+          // if (location.state?.eventId) {
+          //   const event = data.message.find(e => e._id === location.state.eventId);
+          //   if (event) setSelectedEvent(event);
+          // }
+        } else {
+          toast.error("Failed to load events");
+        }
+      } catch (error) {
+        console.error("Error fetching events:", error);
+        toast.error("Error loading events");
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    
+
+    fetchEvents();
+  }, [TournamentId, backend_URL, location.state?.eventId]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  // Handle event selection
+  const handleEventSelect = (eventId) => {
+    if (!eventId) {
+      setSelectedEvent(null);
+      return;
+    }
+    const event = events.find(e => e._id === eventId);
+    if (event) {
+      setSelectedEvent(event);
+    }
+  };
+
+  // Auto-select first event when events are loaded
+  // useEffect(() => {
+  //   if (!selectedEvent && events.length > 0) {
+  //     setSelectedEvent(events[0]);
+  //   }
+  // }, [events, selectedEvent]);
+
+  // Fetch customFields from backend
+  useEffect(() => {
+    const fetchTournament = async () => {
+      if (!TournamentId || !selectedEvent) {
+        console.log('No TournamentId or selectedEvent'); // Debug log
+        setLoading(false);
+        return;
+      }
+      try {
+        console.log('Fetching tournament data for:', TournamentId); // Debug log
         const res = await fetch(`${backend_URL}/api/player/tournaments/${TournamentId}`);
         const data = await res.json();
+        console.log('Tournament data:', data); // Debug log
         if (data.success && data.message?.settings?.customFields) {
+          console.log('Custom fields found:', data.message.settings.customFields); // Debug log
           setCustomFields(data.message.settings.customFields);
           // Reinitialize members with new custom fields
           setMembers(members => members.map(member => ({
@@ -48,6 +128,8 @@ const RegistrationForm = () => {
               return acc;
             }, {})
           })));
+        } else {
+          console.log('No custom fields found in response'); // Debug log
         }
       } catch (err) {
         toast.error("Failed to load tournament custom fields");
@@ -56,8 +138,7 @@ const RegistrationForm = () => {
       }
     };
     fetchTournament();
-    // eslint-disable-next-line
-  }, [TournamentId]);
+  }, [TournamentId, selectedEvent, backend_URL]);
 
   const validate = () => {
     const newErrors = members.map(member => {
@@ -147,47 +228,110 @@ const RegistrationForm = () => {
       return;
     }
 
-    // Backend check: are all emails registered?
-    // try {
-    //   const emailCheckRes = await fetch(`${backend_URL}/api/player/checkEmailsRegistered`, {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ emails: members.map(m => m.email) })
-    //   });
-    //   const emailCheckData = await emailCheckRes.json();
-    //   if (!emailCheckData.success) {
-    //     toast.error(emailCheckData.message || 'Some emails are not registered.');
-    //     return;
-    //   }
-    // } catch (err) {
-    //   toast.error('Could not verify emails. Please try again.');
-    //   return;
-    // }
+    if (entryFee <= 0) {
+      await submitRegistration();
+      return;
+    }
 
-    // Razorpay Payment Integration
-    const amount = entryFee * members.length * 100; // Razorpay expects paise
-    if (amount > 0) {
-      // Load Razorpay script if not already loaded
-      if (!window.Razorpay) {
-        await new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-          script.onload = resolve;
-          script.onerror = reject;
-          document.body.appendChild(script);
-        });
+    try {
+      setLoading(true);
+      
+      // 1. Create order on server
+      const paymentAmount = entryFee * members.length;
+      
+      console.log('Frontend - Sending payment request:', {
+        amount: paymentAmount,
+        members: members.length,
+        backend_URL
+      });
+      
+      const orderResponse = await fetch(`${backend_URL}/api/payments/create-order`, {
+        method: 'POST',
+        credentials: 'include', // Include cookies for authentication
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          amount: paymentAmount,
+          currency: 'INR',
+          receipt: `receipt_${Date.now()}`,
+          eventId,
+          teamName: teamName || null,
+          members: members.map(m => ({
+            name: m.name,
+            email: m.email,
+            mobile: m.mobile,
+            academyName: m.academyName,
+            customFields: m.customFieldValues
+          }))
+        })
+      });
+
+      const orderData = await orderResponse.json();
+      console.log('Frontend - Received order response:', {
+        status: orderResponse.status,
+        statusText: orderResponse.statusText,
+        data: orderData,
+        headers: Object.fromEntries(orderResponse.headers.entries())
+      });
+      
+      if (orderResponse.status === 401) {
+        // Clear invalid token
+        localStorage.removeItem('token');
+        // Redirect to login
+        window.location.href = '/login/player?sessionExpired=true';
+        return;
+      }
+      
+      if (!orderResponse.ok) {
+        throw new Error(orderData.message || 'Failed to create order');
       }
 
-      console.log('Razorpay Key:', import.meta.env.VITE_RAZORPAY_KEY_ID);
-    const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID, // Use Vite env variable
-        amount: amount,
-        currency: 'INR',
-        name: eventName,
-        description: 'Tournament Registration',
-        handler: async function (response) {
-          // Only submit registration if payment is successful
-          await submitRegistration();
+      // 2. Initialize Razorpay
+      console.log('Order data received:', orderData);
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: orderData.order.amount, // Access amount from order object
+        currency: orderData.order.currency, // Access currency from order object
+        order_id: orderData.order.id, // Access id from order object
+        name: 'Tourney',
+        description: `Registration for ${eventName}`,
+        handler: async (response) => {
+          try {
+            setLoading(true);
+            const verifyResponse = await fetch(`${backend_URL}/api/payments/verify`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                order_id: response.razorpay_order_id,
+                payment_id: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                eventId,
+                teamName: teamName || null,
+                members: members.map(m => ({
+                  name: m.name,
+                  email: m.email,
+                  mobile: m.mobile,
+                  academyName: m.academyName,
+                  customFields: m.customFieldValues
+                }))
+              })
+            });
+            const verifyData = await verifyResponse.json();
+            if (!verifyResponse.ok) {
+              throw new Error(verifyData.message || 'Verification failed');
+            }
+            await submitRegistration();
+          } catch (error) {
+            console.error('Payment error:', error);
+            toast.error(`Payment failed: ${error.message}`);
+            setLoading(false);
+          } finally {
+            setLoading(false);
+          }
         },
         prefill: {
           name: members[0]?.name || '',
@@ -196,30 +340,49 @@ const RegistrationForm = () => {
         },
         theme: { color: '#F37254' },
         modal: {
-          ondismiss: function() {
-            toast.error('Payment cancelled. Registration not submitted.');
+          ondismiss: () => {
+            setLoading(false);
+            toast.error("Payment failed or was cancelled. Please try again.");
           }
         }
       };
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-      return;
-    }
 
-    // If no payment required, proceed as usual
-    await submitRegistration();
+      // Load Razorpay script if needed
+      if (!window.Razorpay) {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        script.onload = () => new window.Razorpay(options).open();
+        document.body.appendChild(script);
+      } else {
+        new window.Razorpay(options).open();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error(error.message || 'Payment processing failed');
+      setLoading(false);
+    }
   };
 
   // Registration API logic only
   const submitRegistration = async () => {
-    const validationErrors = validate();
-    setErrors(validationErrors);
+    let allSuccess = true;
+    let errorMsg = '';
     
-    const hasErrors = validationErrors.some(error => Object.keys(error).length > 0);
-    if (hasErrors) return;
+    try {
+      setLoading(true);
+      const validationErrors = validate();
+      setErrors(validationErrors);
+      
+      const hasErrors = validationErrors.some(error => Object.keys(error).length > 0);
+      if (hasErrors) {
+        setLoading(false);
+        return;
+      }
 
     if (!TournamentId || !eventId) {
       alert("Tournament or Event ID missing!");
+      setLoading(false);
       return;
     }
 
@@ -230,6 +393,7 @@ const RegistrationForm = () => {
       // Group registration
       if (!teamName || !teamName.trim()) {
         toast.error("Team name is required for group registration.");
+        setLoading(false);
         return;
       }
       const membersPayload = members.map(member => ({
@@ -237,8 +401,9 @@ const RegistrationForm = () => {
         email: member.email,
         mobile: member.mobile,
         academyName: member.academyName,
-        feesPaid: false, // or true if you want to mark as paid
-        customFields: member.customFieldValues // send as nested object for backend
+        feesPaid: true, 
+        customFields: member.customFieldValues,
+        entry: 'online'
       }));
       try {
         const res = await fetch(
@@ -258,6 +423,7 @@ const RegistrationForm = () => {
       } catch (err) {
         allSuccess = false;
         errorMsg = err.message || 'Network error during group registration.';
+        setLoading(false);
       }
     } else {
       // Individual registration (keep previous logic)
@@ -267,8 +433,8 @@ const RegistrationForm = () => {
         email: member.email,
         mobile: member.mobile,
         academyName: member.academyName,
-        feesPaid: false, // or true if you want to mark as paid
-        ...member.customFieldValues,
+        feesPaid: true,
+        customFields: member.customFieldValues,
         entry: 'online'
       };
       try {
@@ -294,25 +460,74 @@ const RegistrationForm = () => {
 
     if (allSuccess) {
       toast.success('Registration submitted successfully!');
-      // Optionally, redirect or clear form
+      setTimeout(() => {
+        navigate('/tournaments');  
+      });
     } else {
-      console.log("Error in registration:", errorMsg);
-      toast.error(`Error: ${errorMsg}`);
+        console.log("Error in registration:", errorMsg);
+        toast.error(`Error: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast.error(`Registration failed: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-      <Navigation />
-      <main className="flex-grow flex items-center justify-center pt-30 pb-12">
-        <Card className="w-full max-w-2xl rounded-2xl shadow-lg p-0 mx-4">
-          <CardContent className="p-8">
-            <h2 className="text-2xl font-bold text-red-500 mb-6 text-center">
-              Register for {eventName}
-            </h2>
+  <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
+    <Navigation />
+    <main className="flex-grow flex items-center justify-center pt-30 pb-12">
+      <Card className="w-full max-w-2xl rounded-2xl shadow-lg p-0 mx-4">
+      <div className="bg-red-500 text-white py-4 px-6 rounded-t-2xl text-center">
+    <h2 className="text-2xl font-bold">
+      {selectedEvent ? `Register for ${eventName}` : "Select an Event"}
+    </h2>
+  </div>
+        <CardContent className="p-8">
+          
+
+          {/* Event Selection Dropdown */}
+          <div className="mb-6">
+            <label className="block text-lg md:text-xl font-medium text-gray-700 mb-2">
+              Select Event
+            </label>
+            <select
+  onChange={(e) => handleEventSelect(e.target.value)}
+  value={selectedEvent?._id || ""}
+  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+  disabled={loadingEvents || events.length === 0}
+>
+  <option value="">Select an event...</option>
+  {events.map((event) => (
+    <option key={event._id} value={event._id}>
+      {event.name || event.eventName} (₹{event.entryFee || "0"})
+    </option>
+  ))}
+</select>
+          </div>
+
+          {/* Empty State */}
+          {!selectedEvent ? (
+            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+              <div className="flex flex-col items-center space-y-2">
+                <AlertCircle className="h-12 w-12 text-gray-400" />
+                <p className="text-gray-500 font-medium">
+                  Please select an event to continue
+                </p>
+              </div>
+            </div>
+          ) : loading ? (
+            // Loading State
+            <div className="flex flex-col justify-center items-center h-48 space-y-3">
+              <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+              <p className="text-sm text-gray-500">Loading registration form...</p>
+            </div>
+          ) : (
+            // Registration Form
             <form onSubmit={handleSubmit} className="space-y-8">
-              
               {/* Team Name (for group registration) */}
               {members.length > 1 && (
                 <div className="mb-6">
@@ -331,21 +546,25 @@ const RegistrationForm = () => {
               )}
 
               {members.map((member, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-5 relative">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-semibold text-lg">Member {index + 1}</h3>
-                    {members.length > 1 && (
-                      <button 
-                        type="button"
-                        onClick={() => removeMember(index)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-4">
+                <div
+                key={index}
+                className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition hover:scale-[1.01]"
+              >
+                {/* 🔴 Member Header Bar */}
+                <div className="bg-red-500 text-white px-4 py-2 flex justify-between items-center">
+                  <h3 className="font-semibold">Member {index + 1}</h3>
+                  {members.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeMember(index)}
+                      className="text-white hover:text-gray-200"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+
+                  <div className="p-5 space-y-4">
                     {/* Name */}
                     <div>
                       <label className="block text-sm font-medium mb-1">Name</label>
@@ -361,7 +580,7 @@ const RegistrationForm = () => {
                         <p className="text-red-500 text-xs mt-1">{errors[index].name}</p>
                       )}
                     </div>
-                    
+
                     {/* Mobile */}
                     <div>
                       <label className="block text-sm font-medium mb-1">Mobile Number</label>
@@ -378,7 +597,7 @@ const RegistrationForm = () => {
                         <p className="text-red-500 text-xs mt-1">{errors[index].mobile}</p>
                       )}
                     </div>
-                    
+
                     {/* Email */}
                     <div>
                       <label className="block text-sm font-medium mb-1">Email</label>
@@ -394,7 +613,7 @@ const RegistrationForm = () => {
                         <p className="text-red-500 text-xs mt-1">{errors[index].email}</p>
                       )}
                     </div>
-                    
+
                     {/* Academy Name */}
                     <div>
                       <label className="block text-sm font-medium mb-1">Academy Name</label>
@@ -434,11 +653,11 @@ const RegistrationForm = () => {
                   </div>
                 </div>
               ))}
-              
+
               {/* Add Member Button */}
               <div className="flex justify-center">
-                <Button 
-                  type="button" 
+                <Button
+                  type="button"
                   onClick={addMember}
                   variant="outline"
                   className="border border-dashed border-gray-300 hover:border-red-500 text-gray-600 hover:text-red-500 rounded-lg px-4 py-2 flex items-center gap-2"
@@ -447,7 +666,7 @@ const RegistrationForm = () => {
                   Add Member
                 </Button>
               </div>
-              
+
               {/* Entry Fee Display */}
               <div className="flex justify-between items-center bg-gray-100 px-4 py-3 rounded-lg">
                 <span className="font-medium text-gray-700">Total Entry Fee</span>
@@ -464,12 +683,13 @@ const RegistrationForm = () => {
                 Submit Registration
               </Button>
             </form>
-          </CardContent>
-        </Card>
-      </main>
-      <Footer />
-    </div>
-  );
+          )}
+        </CardContent>
+      </Card>
+    </main>
+    <Footer />
+  </div>
+);
 };
 
 export default RegistrationForm;

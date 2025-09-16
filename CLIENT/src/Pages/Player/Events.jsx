@@ -295,9 +295,9 @@ const Event = () => {
       </div>
     );
   }
-  
+
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-pink-50 to-gray-100 ">
+    <div className="w-full min-h-screen " style={{backgroundColor: '#F8F2F2'}}>
       {/* Add the animation styles */}
       <style>{animationStyles}</style>
 
@@ -307,33 +307,26 @@ const Event = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className={`flex justify-center mb-12 ${pageLoaded ? 'animate-fade-in' : 'opacity-0'}`}>
             <div className="flex space-x-8">
-              <div className="flex flex-col items-center group">
-                <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground rounded-full flex items-center justify-center mb-3 shadow-lg group-hover:shadow-xl transition-shadow">
-                  <span className="text-3xl">🏆</span>
-                </div>
-                <span className="text-sm font-medium text-muted-foreground">{tournament?.sport}</span>
-              </div>
+
             </div>
           </div>
 
-          <div className={`flex items-center justify-between mb-8 ${pageLoaded ? 'animate-fade-in delay-100' : 'opacity-0'}`}>
-            <h1 className="text-4xl font-bold text-foreground">{tournament?.title}</h1>
-          </div>
+
 
           <Card className={`bg-card rounded-2xl shadow-lg hover:shadow-xl transition-shadow mb-12 overflow-hidden p-5 ${pageLoaded ? 'animate-slide-up delay-100' : 'opacity-0'}`}>
-            <div className="flex flex-col lg:flex-row h-full">
+            <div className="flex flex-col lg:flex-row h-full gap-6">
               {/* Image Section */}
-              <div className="lg:w-80 w-full flex-shrink-0 h-[500px] lg:h-[400px] relative group rounded-lg overflow-hidden">
-                <img
+              <div className="w-full lg:w-80 flex-shrink-0 h-64 sm:h-80 md:h-[400px] relative group rounded-lg overflow-hidden">
+              <img
                   src={tournament?.imageUrl || "/placeholder.svg"}
                   alt={tournament?.title}
                   className="w-full h-full object-cover object-center"
                 />
                 {/* View Poster Button - Only visible on hover */}
-                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
+                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 cursor-pointer">
                   <button
                     onClick={() => window.open(tournament?.imageUrl || "/placeholder.svg", "_blank")}
-                    className="px-4 py-2 border border-primary text-primary rounded-md hover:bg-primary/80 hover:text-white transition-colors"
+                    className="px-4 py-2 border border-primary text-primary rounded-md hover:bg-primary/80 hover:text-white transition-colors cursor-pointer"
                   >
                     View Poster
                   </button>
@@ -343,41 +336,53 @@ const Event = () => {
               {/* Text Section */}
               <div className="flex-1 p-8 flex flex-col justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-primary mb-4">{tournament?.title}</h2>
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-4 capitalize">
+                {tournament?.title}</h2>
 
                   <div className="space-y-4 mb-6">
                     <div className="flex items-center text-muted-foreground">
                       <MapPin className="w-5 h-5 text-primary mr-2 flex-shrink-0" />
-                      <span className="text-lg">{tournament?.location || "Location not specified"}</span>
+                      <span className="text-md lg:text-lg text-black">{tournament?.location || "Location not specified"}</span>
                     </div>
+
+                    {/* Google Map Embed */}
+                    {tournament?.location && (
+  <div className="mt-4 rounded-xl overflow-hidden shadow-md h-64 w-full sm:w-3/4 lg:w-1/2 mx-auto mb-8">
+    <iframe
+      title="Tournament Location"
+      width="100%"
+      height="100%"
+      style={{ border: 0 }}
+      loading="lazy"
+      allowFullScreen
+      referrerPolicy="no-referrer-when-downgrade"
+      src={`https://www.google.com/maps?q=${encodeURIComponent(tournament.location)}&output=embed`}
+    ></iframe>
+  </div>
+)}
 
                     <div className="flex items-center text-muted-foreground">
                       <Calendar className="w-5 h-5 text-primary mr-2" />
-                      <span className="text-lg">
+                      <span className="text-md lg:text-lg text-black">
                         {tournament?.date || "Date not specified"}
                         {tournament?.endDate && ` - ${tournament?.endDate}`}
                       </span>
                     </div>
 
                     <div className="mt-4">
-                      <h4 className="text-sm font-semibold text-muted-foreground mb-2 mt-20">Events :</h4>
+                      <h4 className="text-xl font-semibold text-primary mb-2 mt-10">Events :</h4>
                       <div className="flex flex-wrap gap-2">
                         {events.length > 0 ? (
                           events.map((event, index) => (
-                            <button
+                            <span
                               key={event.id || index}
-                              className={`px-3 py-1 rounded-full text-sm font-medium focus:outline-none transition-all
-      ${selectedEvent && selectedEvent.id === event.id
-                                  ? 'bg-red-500 text-white border-2 border-red-700'
-                                  : 'bg-red-100 text-red-800 hover:bg-red-300 hover:text-white cursor-pointer border border-red-200'}
-    `} onClick={() => setSelectedEvent(event)}
-                              style={{ border: selectedEvent && selectedEvent.id === event.id ? '2px solid #b91c1c' : 'none' }}
+                              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border border-gray-200 capitalize"
                             >
                               {event.name}
-                            </button>
+                            </span>
                           ))
                         ) : (
-                          <span className="text-muted-foreground text-sm">No categories available</span>
+                          <span className="text-muted-foreground text-sm">No events available</span>
                         )}
                       </div>
                     </div>
@@ -400,21 +405,21 @@ const Event = () => {
                 </div>
               </div>
             </div>
-                 {selectedEvent ? (
-                   <TabSection 
-                     tournament={tournament} 
-                     selectedEvent={selectedEvent} 
-                     description={tournament?.description} 
-                     events={events} 
-                   />
-                 ) : (
-                   <div className="flex justify-center items-center h-64">
-                     <p className="text-gray-500">Loading event details...</p>
-                   </div>
-                 )}
+            {selectedEvent ? (
+              <TabSection
+                tournament={tournament}
+                selectedEvent={selectedEvent}
+                description={tournament?.description}
+                events={events}
+              />
+            ) : (
+              <div className="flex justify-center items-center h-64">
+                <p className="text-gray-500">Loading event details...</p>
+              </div>
+            )}
           </Card>
 
-     
+
 
           {/* <div className={`mb-12 ${pageLoaded ? 'animate-fade-in delay-200' : 'opacity-0'}`}>
             <h2 className="text-2xl font-bold text-foreground mb-8 mt-50">Tournament Events</h2>
@@ -428,60 +433,41 @@ const Event = () => {
               </div>
             ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {events.length > 0 ? (
-                  events.map((event, index) => (
-                    <div 
-                      key={event.id || index}
-                      className={`${pageLoaded ? 'card-animation' : 'opacity-0'}`} 
-                      style={{ animationDelay: `${0.2 + (index * 0.1)}s` }}
-                    >
-                  <EventCard
-                    name={event.name}
-                    fee={event.fee}
-                    participants={event.participants}
-                    icon={event.icon}
-                    tournamentId={initialTournamentData?._id || id}
-                    eventId={event.id}
-                    onBook={() => console.log(`Registering for ${event.name}`)}
-                  />
-                    </div>
-                    
-                  ))
-                ) : (
-                  <p className="col-span-3 text-center text-muted-foreground">No events found for this tournament.</p>
-                )}
+                
             </div>
             )}
           </div> */}
 
-          {/* Organizer is verified???? */ }
+          {/* Organizer is verified???? */}
 
-          
-          
+
+
+
+
           {tournament?.isVerified && (
-          <Card className={`bg-green-50 border-green-200 rounded-2xl p-6 mb-12 ${pageLoaded ? 'animate-fade-in delay-300' : 'opacity-0'}`}>
-            <CardContent className="p-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-lg">✓</span>
+            <Card className={`bg-green-50 border-green-200 rounded-2xl p-6 mb-12 ${pageLoaded ? 'animate-fade-in delay-300' : 'opacity-0'}`}>
+              <CardContent className="p-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-lg">✓</span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">Tournament</h3>
+                      <p className="text-muted-foreground">Play Extreme</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">Tournament</h3>
-                    <p className="text-muted-foreground">Play Extreme</p>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium">
+                      Verified Organizer
+                    </span>
+                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-sm">✓</span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium">
-                    Verified Organizer
-                  </span>
-                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm">✓</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
           )}
 
 

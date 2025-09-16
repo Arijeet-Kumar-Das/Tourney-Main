@@ -1,5 +1,5 @@
 import { Badge } from "@/Components/ui/badge";
-import { MapPin, Calendar } from "lucide-react";
+import { MapPin, Calendar, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface Event {
@@ -22,7 +22,18 @@ interface TournamentCardProps {
   imageUrl: string;
   sport: string;
   description?: string;
+  status?: string; // Can be 'upcoming', 'ongoing', 'completed', or any other status from the database
 }
+
+const sportColors: Record<string, { bg: string; text: string }> = {
+  Cricket: { bg: "bg-green-100", text: "text-green-700" },
+  Football: { bg: "bg-blue-100", text: "text-blue-700" },
+  Badminton: { bg: "bg-amber-100", text: "text-amber-700" },
+  Tennis: { bg: "bg-yellow-100", text: "text-yellow-700" },
+  Hockey: { bg: "bg-orange-100", text: "text-orange-700" },
+  default: { bg: "bg-gray-100", text: "text-gray-700" }
+};
+
 
 const TournamentCard = ({
   id,
@@ -30,35 +41,14 @@ const TournamentCard = ({
   location,
   date,
   endDate,
-  events = [], // Default to empty array
+  events = [],
   imageUrl,
   sport,
-  description
+  description,
+  status
 }: TournamentCardProps) => {
-  // Debug log to check events data
-  console.log(`Tournament: ${title}`, { 
-    events,
-    eventsLength: events?.length,
-    firstEvent: events?.[0],
-    eventsTypes: events?.map(e => ({
-      name: e?.name,
-      type: e?.eventType,
-      entryFee: e?.entryFee,
-      participants: e?.numberOfParticipants,
-      maxTeams: e?.maxTeams
-    }))
-  });
-  
-  // Ensure events is always an array
   const safeEvents = Array.isArray(events) ? events : [];
-  
-  // Log the first event's structure for debugging
-  if (safeEvents.length > 0) {
-    console.log('First event structure:', {
-      keys: Object.keys(safeEvents[0]),
-      values: Object.values(safeEvents[0])
-    });
-  }
+
   return (
     <Link
       to={`/events/${id}`}
@@ -71,78 +61,138 @@ const TournamentCard = ({
         events,
         imageUrl,
         sport,
-        participants: 64,
         description
       }}
-      className="block h-full"
+      className="block"
     >
-      <div className="flex flex-col md:flex-row h-full overflow-hidden rounded-lg border border-red-200 bg-card text-card-foreground shadow-sm transition-all duration-300 hover:shadow-tournament-hover hover:scale-[1.02] border-border shadow-tournament p-7">
-
-        {/* Image Section - Left side */}
-        <div className="relative w-full md:w-1/2 h-72 sm:h-70 md:h-80 lg:h-[20rem] xl:h-[25rem] rounded-lg overflow-hidden">
-
+      <div
+        className="
+    flex flex-col md:flex-row 
+    border rounded-xl shadow-md overflow-hidden 
+    hover:shadow-lg transition-all duration-300 
+    bg-white dark:bg-gray-900
+    w-full max-w-2xl md:max-w-4xl 
+    h-auto md:h-[30rem]
+  "
+      >
+        {/* Left Poster Image */}
+        <div className="relative w-full md:w-1/2 h-40 md:h-full">
           <img
             src={imageUrl}
             alt={title}
-            className="w-full h-full object-cover object-center transition-transform duration-300 hover:scale-110"
+            className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          <div className="absolute top-4 left-4">
-            <Badge variant="secondary" className="bg-primary text-primary-foreground font-medium">
-              {sport}
-            </Badge>
+
+          {/* Overlay badges */}
+          <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+            {/* Status badge stays top-left */}
+            <Badge
+  variant="secondary"
+  className={`${status === 'completed' || status === 'Completed'
+    ? 'bg-gray-500 hover:bg-gray-600'
+    : status === 'ongoing' || status === 'Ongoing'
+      ? 'bg-yellow-500 hover:bg-yellow-600'
+      : status === 'cancelled' || status === 'Cancelled'
+        ? 'bg-red-400 hover:bg-red-400'
+        : 'bg-blue-500 hover:bg-blue-600' // Default for upcoming/other statuses
+    } text-white text-sm capitalize p-1 px-2 rounded-xl`}
+>
+  {status || 'Upcoming'}
+</Badge>
+          </div>
+
+          {/* Sport badge moves to top-right */}
+          <div className="absolute top-3 right-3">
+          <Badge
+  variant="secondary"
+  className={`${sportColors[sport]?.bg || sportColors.default.bg} 
+             ${sportColors[sport]?.text || sportColors.default.text} 
+             text-sm p-1 px-2 rounded-xl`}
+>
+  {sport}
+</Badge>
           </div>
         </div>
 
-        {/* Content Section - Right side */}
-        <div className="flex flex-col flex-1 p-6 justify-between">
-          <div>
-            <h3 className="text-xl font-bold text-card-foreground text-primary mb-3 line-clamp-2">
-              {title}
-            </h3>
+        {/* Right Content */}
+        <div className="flex flex-col flex-1 p-6">
+          {/* Title */}
+          <h3 className="text-lg sm:text-lg md:text-lg lg:text-2xl font-bold text-black mb-2 line-clamp-2 capitalize">
+            {title}
+          </h3>
 
-            <div className="space-y-3 mb-4">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <MapPin className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm">{location}</span>
-              </div>
+          {description && (
+            <p className="text-xs sm:text-sm md:text-sm lg:text-md text-muted-foreground mb-4 line-clamp-2">
+              {description}
+            </p>
+          )}
 
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Calendar className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm">
-                  {date} {endDate && `- ${endDate}`}
-                </span>
-              </div>
-            </div>
+          {/* Location */}
+          <div className="flex items-start gap-4 text-muted-foreground text-xs sm:text-sm md:text-sm lg:text-md mb-4 ">
+            <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span className="font-semibold whitespace-normal break-words text-black line-clamp-2">
+              {location}
+            </span>
+          </div>
+
+          {/* Dates */}
+          <div className="flex items-start gap-4 text-muted-foreground text-xs sm:text-sm md:text-sm lg:text-md mb-4">
+            <Calendar className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span className="font-semibold whitespace-normal break-words text-black">
+              {date} {endDate && `- ${endDate}`}
+            </span>
           </div>
 
           {/* Events */}
-          <div className="mt-4">
-            <h4 className="text-sm font-medium text-muted-foreground mb-3">Events</h4>
-            {safeEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No events available</p>
-            ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {safeEvents.slice(0, 4).map((event) => (
-                <div 
-                  key={event._id} 
-                  className="bg-gradient-to-br from-red-400 to-red-500 dark:from-gray-800 dark:to-gray-900 p-3 rounded-4xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
-                >
-                  <h5 className="font-medium text-sm text-white dark:text-gray-100 text-center">
-                    {event.name || 'Event Name'}
-                  </h5>
-                </div>
-              ))}
-              {safeEvents.length > 4 && (
-                <div className="text-center text-sm text-muted-foreground col-span-full mt-2">
-                  +{safeEvents.length - 4} more events
+          <div className="flex items-start gap-4 text-muted-foreground text-xs sm:text-sm md:text-sm lg:text-md mb-4">
+            <Users className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div className="flex flex-col">
+              <h4 className="font-semibold text-xs sm:text-sm md:text-sm lg:text-md font-medium text-black mb-1">
+                Events
+              </h4>
+              {safeEvents.length === 0 ? (
+                <p className="text-xs sm:text-sm lg:text-base text-muted-foreground">
+                  No events available
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {safeEvents.slice(0, 3).map((event) => (
+                    <Badge
+                      key={event._id}
+                      className="flex items-center justify-center font-semibold bg-gray-100 rounded-full text-black dark:bg-gray-800 dark:text-gray-200 outline outline-1 outline-gray-400 text-xs sm:text-xs lg:text-xs px-2 py-1"
+                    >
+                      {event.name}
+                    </Badge>
+
+                  ))}
+                  {safeEvents.length > 3 && (
+                    <span className="flex text-[10px] sm:text-xs lg:text-md text-muted-foreground justify-center items-center">
+                      +{safeEvents.length - 3} more
+                    </span>
+                  )}
                 </div>
               )}
             </div>
-            )}
           </div>
-        </div>
 
+          {/* Footer */}
+          <div className="mt-auto pt-4 border-t flex items-center justify-between">
+            <p className="text-sm sm:text-base md:text-md lg:text-lg font-bold text-gray-900 dark:text-gray-300">
+              Total Events:{" "}
+              <span className="font-semibold text-grey-900 dark:text-white">
+                {safeEvents.length}
+              </span>
+            </p>
+            <Badge
+              variant="outline"
+              className="rounded-full text-grey-600 text-[10px] sm:text-xs md:text-sm px-3 py-1"
+            >
+              {sport}
+            </Badge>
+          </div>
+
+
+        </div>
       </div>
     </Link>
   );

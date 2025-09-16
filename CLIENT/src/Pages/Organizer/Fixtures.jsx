@@ -1,19 +1,31 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import RoundRobinFixtures from "./RoundRobinFixtures.jsx";
 import { useParams, useSearchParams } from "react-router-dom";
-import { fetchEvents, fetchTeams, fetchFixtures, generateFixtures, generateKnockout, updateFixture, createFixture, deleteKnockoutFixtures } from "../../lib/api.js";
+import { fetchEvents, fetchTeams, fetchFixtures, generateFixtures, generateFixturesWithOrder, generateKnockout, updateFixture, createFixture, deleteKnockoutFixtures } from "../../lib/api.js";
 import { Plus, Trash2, RotateCcw, Trophy, Users, User, Calendar, X, Info, RefreshCw, Zap } from "lucide-react";
+import SeedingModal from "./SeedingModal.jsx";
 
 const TournamentBracket = () => {
   // ---------------------------- NEW STATE -----------------------------
   const [savingRound, setSavingRound] = useState(null);
+  // ----- seeding modal state -----
+  const [showSeedingModal, setShowSeedingModal] = useState(false);
   // ----- scheduling modal state -----
   const [scheduleRound, setScheduleRound] = useState(null); // round object being scheduled or null
-  const [selectedDate, setSelectedDate] = useState(""); // ISO yyyy-MM-ddThh:mm for <input type="datetime-local">
+  const [selectedDate, setSelectedDate] = useState(""); // ISO yyyy-MM-ddThh:mm for <input className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" type="datetime-local">
   
   // ----- match details modal state -----
   const [selectedMatch, setSelectedMatch] = useState(null); // Currently selected match for details modal
   const [matchConfig, setMatchConfig] = useState({
+    maxSets: 3,
+    pointsToWin: 30,
+    isDeuce: true,
+    decidingPoint: 50,
+    courtNumber: 1
+  });
+  // ---- global config modal ----
+  const [isGlobalConfigOpen, setIsGlobalConfigOpen] = useState(false);
+  const [globalConfig, setGlobalConfig] = useState({
     maxSets: 3,
     pointsToWin: 30,
     isDeuce: true,
@@ -493,6 +505,83 @@ const TournamentBracket = () => {
   };
 
   // NEW: Reset Fixtures function
+  // ---------------- GLOBAL CONFIG SAVE ----------------
+  const saveGlobalConfig = async () => {
+    if (updatingMatch) return;
+    setUpdatingMatch(true);
+    try {
+      const allMatches = bracket.flatMap(r => r.matches);
+      const results = await Promise.all(allMatches.map(async (m) => {
+        const matchId = `round${m.round}_match${m.matchIndex}`;
+        const existing = fixtureMap[matchId];
+        const payload = {
+          maxSets: globalConfig.maxSets,
+          pointsToWin: globalConfig.pointsToWin,
+          isDeuce: globalConfig.isDeuce,
+          decidingPoint: globalConfig.decidingPoint,
+          courtNumber: globalConfig.courtNumber,
+        };
+        if (existing && existing._id) {
+          // update
+          await updateFixture(existing._id, payload);
+          return { matchId, fixture: { ...existing, ...payload } };
+        }
+        // create new
+        const teamAId = nameIdMap[m.participant1] || m.participant1;
+        const teamBId = nameIdMap[m.participant2] || m.participant2;
+        const created = await createFixture({
+          tournamentId: tid,
+          eventId,
+          round: m.round,
+          matchIndex: m.matchIndex,
+          teamA: teamAId,
+          teamB: teamBId,
+          ...payload,
+        });
+        return { matchId, fixture: created };
+      }));
+
+      // merge results into fixtureMap
+      setFixtureMap(prev => {
+        const next = { ...prev };
+        results.forEach(({ matchId, fixture }) => {
+          next[matchId] = fixture;
+          if (fixture._id) next[fixture._id] = fixture; // for lookup
+        });
+        return next;
+      });
+      alert("Configuration applied to all rounds!");
+      setIsGlobalConfigOpen(false);
+    } catch (err) {
+      console.error("Failed to save global config", err);
+      alert(err.message || "Failed to save configuration");
+    } finally {
+      setUpdatingMatch(false);
+    }
+  };
+
+  // Delete Fixtures without auto-reload so user can manually generate again
+  const handleDeleteFixtures = async () => {
+    if (!window.confirm('Are you sure you want to delete all fixtures?')) return;
+    try {
+      await deleteKnockoutFixtures(tid, eventId);
+      // Clear local state so UI reflects deletion
+      setWinners({});
+      setBracket([]);
+      setFixtureMap({});
+      // Inform other components if needed
+      window.dispatchEvent(
+        new CustomEvent('fixturesDeleted', {
+          detail: { tournamentId: tid, eventId },
+        })
+      );
+      alert('Fixtures deleted successfully! You can now click Generate to create new fixtures.');
+    } catch (err) {
+      console.error('Failed to delete fixtures', err);
+      alert(err.message || 'Failed to delete fixtures');
+    }
+  };
+
   const handleResetFixtures = async () => {
     if (!window.confirm('Are you sure you want to reset all fixtures? This action cannot be undone.')) {
       return;
@@ -714,14 +803,19 @@ const TournamentBracket = () => {
   };
 
   // Trigger backend bracket generation explicitly
-  const handleGenerateFixtures = async () => {
-    if (!tid) return;
+  // Manual generate via seeding modal
+  const handleConfirmSeeding = async (order) => {
     try {
-      await generateFixtures(tid, eventId);
+      await generateFixturesWithOrder(tid, eventId, order);
       window.location.reload();
     } catch (err) {
       console.error("Failed to generate fixtures", err);
+      alert(err.message || "Failed to generate fixtures");
     }
+  };
+
+  const handleGenerateFixtures = () => {
+    setShowSeedingModal(true);
   };
 
   // Fetch teams
@@ -1078,12 +1172,12 @@ const TournamentBracket = () => {
     return null;
   };
 
-  const ParticipantDisplay = ({ name, isWinner, onClick, className = "" }) => {
+  const ParticipantDisplay = ({ name, isWinner, onClick }) => {
     const playerInfo = parsePlayerDisplay(name);
     if (competitionType === "pairs" && playerInfo) {
       return (
         <div
-          className={`${className} cursor-pointer transition-all duration-200 p-3 rounded-lg border-2 ${
+          className={`cursor-pointer transition-all duration-200 p-3 rounded-lg border-2 ${
             isWinner
               ? "bg-gradient-to-r from-green-500 to-green-600 text-white border-green-500 shadow-lg transform scale-105"
               : "bg-white border-blue-200 hover:border-blue-400 hover:shadow-md"
@@ -1093,9 +1187,9 @@ const TournamentBracket = () => {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium text-gray-500">
-                {isWinner ? "🏆 WINNER" : "PAIR"}
+                {isWinner ? "" : "PAIR"}
               </div>
-              {isWinner && <Trophy size={16} className="text-yellow-300" />}
+              {isWinner && <Trophy className="text-yellow-300" />}
             </div>
             <div className="space-y-1">
               <div className="bg-blue-50 px-2 py-1 rounded text-sm font-medium">
@@ -1111,9 +1205,11 @@ const TournamentBracket = () => {
         </div>
       );
     }
+
+    console.log(showSeedingModal)
     return (
       <div
-        className={`${className} cursor-pointer transition-all duration-200 p-3 rounded-lg border-2 flex items-center justify-between ${
+        className={`cursor-pointer transition-all duration-200 p-3 rounded-lg border-2 ${
           isWinner
             ? "bg-gradient-to-r from-green-500 to-green-600 text-white border-green-500 shadow-lg transform scale-105"
             : "bg-white border-blue-200 hover:border-blue-400 hover:shadow-md"
@@ -1123,7 +1219,7 @@ const TournamentBracket = () => {
         <span className="font-medium" title={name}>
           {truncateName(name)}
         </span>
-        {isWinner && <Trophy size={16} className="text-yellow-300" />}
+        {isWinner && <Trophy className="text-yellow-300" />}
       </div>
     );
   };
@@ -1245,14 +1341,17 @@ const TournamentBracket = () => {
                 value={eventId || ""}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setSearchParams((prev) => {
-                    const np = new URLSearchParams(prev);
-                    if (val) np.set("eventId", val);
-                    else np.delete("eventId");
-                    return np;
-                  });
+                  setSearchParams(
+                    (prev) => {
+                      const np = new URLSearchParams(prev);
+                      if (val) np.set("eventId", val);
+                      else np.delete("eventId");
+                      return np;
+                    },
+                    { replace: true }
+                  );
                 }}
-                className="bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
+                className="bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
               >
                 {events.map((ev) => (
                   <option key={ev._id} value={ev._id}>
@@ -1265,14 +1364,31 @@ const TournamentBracket = () => {
             {/* Right side - Action Buttons */}
             <div className="flex items-center gap-3">
               
-              {/* Reset Fixtures Button */}
+              {/* Global Config Button */}
               <button
+                onClick={() => setIsGlobalConfigOpen(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-xl font-semibold transition-all duration-200 hover:from-indigo-600 hover:to-purple-700 hover:shadow-lg transform hover:scale-105"
+              >
+                Config&nbsp;All&nbsp;Rounds
+              </button>
+              {/* Reset Fixtures Button */}
+              {/* <button
                 onClick={handleResetFixtures}
                 className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-pink-600 text-white px-4 py-2 rounded-xl font-semibold transition-all duration-200 hover:from-red-600 hover:to-pink-700 hover:shadow-lg transform hover:scale-105"
                 title="Reset all fixtures"
               >
                 <RotateCcw size={16} />
                 Reset
+              </button> */}
+
+              {/* Delete Fixtures Button */}
+              <button
+                onClick={handleDeleteFixtures}
+                className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-800 text-white px-4 py-2 rounded-xl font-semibold transition-all duration-200 hover:from-red-700 hover:to-red-900 hover:shadow-lg transform hover:scale-105"
+                title="Delete all fixtures"
+              >
+                <Trash2 size={16} />
+                Delete
               </button>
 
               {/* Refresh Page Button */}
@@ -1370,6 +1486,64 @@ const TournamentBracket = () => {
         )}
       </div>
 
+      {/* -------- Global Config Modal -------- */}
+      {isGlobalConfigOpen && (
+        <div className="modal-overlay" onClick={() => setIsGlobalConfigOpen(false)}>
+          <div className="modal-content max-w-lg" onClick={(e)=>e.stopPropagation()}>
+            <h2 className="text-xl font-bold mb-4 text-gray-800 text-center">Match Configuration (All Rounds)</h2>
+            <div className="modal-form grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="text-sm font-medium text-gray-700 space-y-1">
+                Max Sets:
+                <input className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  type="number"
+                  min="1"
+                  max="15"
+                  value={globalConfig.maxSets}
+                  onChange={(e) => setGlobalConfig({...globalConfig,maxSets:parseInt(e.target.value)})}
+                                 />
+              </label>
+              <label className="text-sm font-medium text-gray-700 space-y-1">
+                Points to Win:
+                <input className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  type="number"
+                  value={globalConfig.pointsToWin}
+                  onChange={(e) => setGlobalConfig({...globalConfig,pointsToWin:parseInt(e.target.value)})}
+                                 />
+              </label>
+              <label className="text-sm font-medium text-gray-700 space-y-1" style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                <input className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  type="checkbox"
+                  checked={globalConfig.isDeuce}
+                  onChange={(e) => setGlobalConfig({...globalConfig,isDeuce:e.target.checked})}
+                                 />
+                Enable Deuce
+              </label>
+              <label className="text-sm font-medium text-gray-700 space-y-1">
+                Deciding Point:
+                <input className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  type="number"
+                  value={globalConfig.decidingPoint}
+                  onChange={(e) => setGlobalConfig({...globalConfig,decidingPoint:parseInt(e.target.value)})}
+                                 />
+              </label>
+              <label className="text-sm font-medium text-gray-700 space-y-1">
+                Court Number:
+                <input className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  type="number"
+                  min="1"
+                  value={globalConfig.courtNumber}
+                  onChange={(e) => setGlobalConfig({...globalConfig,courtNumber:parseInt(e.target.value)})}
+                                 />
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button className="tournament-action-btn tournament-save-btn" onClick={saveGlobalConfig} disabled={updatingMatch}>{updatingMatch?"Saving...":"Save"}</button>
+              <button className="tournament-action-btn tournament-cancel-btn" onClick={()=>setIsGlobalConfigOpen(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* -------- Schedule Round Modal -------- */}
       {scheduleRound && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -1377,12 +1551,11 @@ const TournamentBracket = () => {
             <h3 className="text-lg font-semibold text-gray-800 text-center">
               Schedule {scheduleRound.roundName}
             </h3>
-            <input
+            <input className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               type="datetime-local"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+                         />
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setScheduleRound(null)}
@@ -1438,276 +1611,294 @@ const TournamentBracket = () => {
                 </div>
               </div>
 
-              {/* Match Config */}
-              <div className="bg-gray-50 p-4 rounded-lg border">
-                <h3 className="font-semibold mb-3 text-gray-800">Match Configuration</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Number of Sets
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="15"
-                      value={matchConfig.maxSets}
-                      onChange={(e) => handleMaxSetsChange(e.target.value)}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Points to Win Set
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={matchConfig.pointsToWin}
-                      onChange={(e) => setMatchConfig(prev => ({ ...prev, pointsToWin: parseInt(e.target.value) || 30 }))}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Enable Deuce Rules?
-                    </label>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={matchConfig.isDeuce}
-                        onChange={(e) => setMatchConfig(prev => ({ ...prev, isDeuce: e.target.checked }))}
-                        className="mr-2 w-4 h-4"
-                      />
-                      <span className="text-sm">Yes, enable deuce</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Deciding Point (if deuce)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="200"
-                      value={matchConfig.decidingPoint}
-                      onChange={(e) => setMatchConfig(prev => ({ ...prev, decidingPoint: parseInt(e.target.value) || 50 }))}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={!matchConfig.isDeuce}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Court Number
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={matchConfig.courtNumber}
-                      onChange={(e) => setMatchConfig(prev => ({ ...prev, courtNumber: parseInt(e.target.value) || 1 }))}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
+            {/* Match Config */}
+<div className="bg-gray-50 p-4 rounded-lg border">
+  <h3 className="font-semibold mb-3 text-gray-800">Match Configuration</h3>
+  <div className="grid grid-cols-2 gap-4">
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Number of Sets
+      </label>
+      <input 
+        className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        type="number"
+        min="1"
+        max="15"
+        value={matchConfig.maxSets}
+        onChange={(e) => handleMaxSetsChange(e.target.value)}
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Points to Win Set
+      </label>
+      <input 
+        className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        type="number"
+        min="1"
+        max="100"
+        value={matchConfig.pointsToWin}
+        onChange={(e) => setMatchConfig(prev => ({ ...prev, pointsToWin: parseInt(e.target.value) || 30 }))}
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Enable Deuce Rules?
+      </label>
+      <div className="flex items-center space-x-2">
+        <input 
+          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+          type="checkbox"
+          checked={matchConfig.isDeuce}
+          onChange={(e) => setMatchConfig(prev => ({ ...prev, isDeuce: e.target.checked }))}
+        />
+        <span className="text-sm text-gray-700">Yes, enable deuce</span>
+      </div>
+    </div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Deciding Point (if deuce)
+      </label>
+      <input 
+        className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+        type="number"
+        min="1"
+        max="200"
+        value={matchConfig.decidingPoint}
+        onChange={(e) => setMatchConfig(prev => ({ ...prev, decidingPoint: parseInt(e.target.value) || 50 }))}
+        disabled={!matchConfig.isDeuce}
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Court Number
+      </label>
+      <input 
+        className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        type="number"
+        min="1"
+        value={matchConfig.courtNumber}
+        onChange={(e) => setMatchConfig(prev => ({ ...prev, courtNumber: parseInt(e.target.value) || 1 }))}
+      />
+    </div>
+  </div>
+</div>
 
-              {/* Sets Scoring */}
-              <div className="bg-gray-50 p-4 rounded-lg border">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-gray-800">
-                    Sets (Best of {matchConfig.maxSets})
-                  </h3>
-                  <div className="text-sm text-gray-600">
-                    Sets needed to win: {Math.ceil(matchConfig.maxSets / 2)}
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {Array.from({ length: matchConfig.maxSets }, (_, index) => {
-                    const set = selectedMatch.sets?.[index] || {
-                      setNumber: index + 1,
-                      teamAScore: 0,
-                      teamBScore: 0,
-                      completed: false,
-                      winner: null
-                    };
-                    
-                    return (
-                      <div key={index} className={`flex items-center gap-4 p-3 rounded border ${
-                        set.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
-                      }`}>
-                        <span className="font-medium min-w-[60px]">Set {index + 1}</span>
-                        
-                        {/* Team A Score */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-blue-600 min-w-[40px]">{selectedMatch.fixture?.teamA ? (idNameMap[selectedMatch.fixture.teamA] || selectedMatch.fixture.teamA || "Team A") : "Team A"}</span>
-                          <button
-                            onClick={() => updateSetScore(index, 'teamA', set.teamAScore - 1)}
-                            className="w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
-                            disabled={updatingMatch || set.teamAScore <= 0}
-                          >
-                            -
-                          </button>
-                          <input
-                            type="number"
-                            min="0"
-                            value={set.teamAScore}
-                            onChange={(e) => updateSetScore(index, 'teamA', parseInt(e.target.value) || 0)}
-                            className="w-16 text-center border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            disabled={updatingMatch}
-                          />
-                          <button
-                            onClick={() => updateSetScore(index, 'teamA', set.teamAScore + 1)}
-                            className="w-8 h-8 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
-                            disabled={updatingMatch}
-                          >
-                            +
-                          </button>
-                        </div>
+{/* Sets Scoring */}
+<div className="bg-gray-50 p-4 rounded-lg border">
+  <div className="flex items-center justify-between mb-3">
+    <h3 className="font-semibold text-gray-800">
+      Sets (Best of {matchConfig.maxSets})
+    </h3>
+    <div className="text-sm text-gray-600">
+      Sets needed to win: {Math.ceil(matchConfig.maxSets / 2)}
+    </div>
+  </div>
+  <div className="space-y-3">
+    {Array.from({ length: matchConfig.maxSets }, (_, index) => {
+      const set = selectedMatch.sets?.[index] || {
+        setNumber: index + 1,
+        teamAScore: 0,
+        teamBScore: 0,
+        completed: false,
+        winner: null
+      };
+      
+      return (
+        <div key={index} className={`flex items-center gap-4 p-3 rounded border ${
+          set.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
+        }`}>
+          <span className="font-medium min-w-[60px]">Set {index + 1}</span>
+          
+          {/* Team A Score */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-blue-600 min-w-[40px]">
+              {selectedMatch.fixture?.teamA ? (idNameMap[selectedMatch.fixture.teamA] || selectedMatch.fixture.teamA || "Team A") : "Team A"}
+            </span>
+            <button
+              onClick={() => updateSetScore(index, 'teamA', set.teamAScore - 1)}
+              className="w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+              disabled={updatingMatch || set.teamAScore <= 0}
+            >
+              -
+            </button>
+            <input 
+              className="w-16 text-center border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              type="number"
+              min="0"
+              value={set.teamAScore}
+              onChange={(e) => updateSetScore(index, 'teamA', parseInt(e.target.value) || 0)}
+              disabled={updatingMatch}
+            />
+            <button
+              onClick={() => updateSetScore(index, 'teamA', set.teamAScore + 1)}
+              className="w-8 h-8 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+              disabled={updatingMatch}
+            >
+              +
+            </button>
+          </div>
 
-                        <span className="text-gray-500 font-bold">vs</span>
+          <span className="text-gray-500 font-bold">vs</span>
 
-                        {/* Team B Score */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-red-600 min-w-[40px]">{selectedMatch.fixture?.teamB ? (idNameMap[selectedMatch.fixture.teamB] || selectedMatch.fixture.teamB || "Team B") : "Team B"}</span>
-                          <button
-                            onClick={() => updateSetScore(index, 'teamB', set.teamBScore - 1)}
-                            className="w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
-                            disabled={updatingMatch || set.teamBScore <= 0}
-                          >
-                            -
-                          </button>
-                          <input
-                            type="number"
-                            min="0"
-                            value={set.teamBScore}
-                            onChange={(e) => updateSetScore(index, 'teamB', parseInt(e.target.value) || 0)}
-                            className="w-16 text-center border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            disabled={updatingMatch}
-                          />
-                          <button
-                            onClick={() => updateSetScore(index, 'teamB', set.teamBScore + 1)}
-                            className="w-8 h-8 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
-                            disabled={updatingMatch}
-                          >
-                            +
-                          </button>
-                        </div>
+          {/* Team B Score */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-red-600 min-w-[40px]">
+              {selectedMatch.fixture?.teamB ? (idNameMap[selectedMatch.fixture.teamB] || selectedMatch.fixture.teamB || "Team B") : "Team B"}
+            </span>
+            <button
+              onClick={() => updateSetScore(index, 'teamB', set.teamBScore - 1)}
+              className="w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+              disabled={updatingMatch || set.teamBScore <= 0}
+            >
+              -
+            </button>
+            <input 
+              className="w-16 text-center border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              type="number"
+              min="0"
+              value={set.teamBScore}
+              onChange={(e) => updateSetScore(index, 'teamB', parseInt(e.target.value) || 0)}
+              disabled={updatingMatch}
+            />
+            <button
+              onClick={() => updateSetScore(index, 'teamB', set.teamBScore + 1)}
+              className="w-8 h-8 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+              disabled={updatingMatch}
+            >
+              +
+            </button>
+          </div>
 
-                        {/* Set Winner Indicator */}
-                        <div className="flex items-center gap-2 min-w-[80px]">
-                          {set.completed && (
-                            <>
-                              <Trophy size={16} className="text-yellow-500" />
-                              <span className="text-sm font-medium">
-                                {set.winner === 'teamA' ? (selectedMatch.fixture?.teamA ? (idNameMap[selectedMatch.fixture.teamA._id || selectedMatch.fixture.teamA] || "Team A") : "Team A") : (selectedMatch.fixture?.teamB ? (idNameMap[selectedMatch.fixture.teamB._id || selectedMatch.fixture.teamB] || "Team B") : "Team B")}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                {/* Match Status */}
-                <div className="mt-4 p-3 bg-blue-50 rounded border">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Match Status:</span>
-                    <span className={`text-sm font-bold ${
-                      selectedMatch.fixture?.status === 'completed' ? 'text-green-600' : 'text-blue-600'
-                    }`}>
-                      {selectedMatch.fixture?.status === 'completed' ? 'COMPLETED' : 'ONGOING'}
-                    </span>
-                  </div>
-                  
-                  {selectedMatch.fixture?.status === 'completed' && selectedMatch.fixture?.winner && (
-                    <div className="mt-2 text-center">
-                      <span className="text-lg font-bold text-green-600">
-                        🏆 Winner: {idNameMap[selectedMatch.fixture.winner] || 'Unknown'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Auto-Advance for Bye Matches */}
-              {selectedMatch.fixture && 
-               ((selectedMatch.fixture.teamA && !selectedMatch.fixture.teamB) || 
-                (!selectedMatch.fixture.teamA && selectedMatch.fixture.teamB)) && (
-                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                  <h3 className="font-semibold mb-3 text-gray-800 flex items-center gap-2">
-                    <span>🏃‍♂️</span>
-                    Bye Match - Auto Advance
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    This match has only one team. Click below to automatically advance them to the next round.
-                  </p>
-                  <button
-                    onClick={handleAutoAdvance}
-                    disabled={updatingMatch}
-                    className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-lg font-semibold hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 transition-all"
-                  >
-                    {updatingMatch ? "Advancing..." : "Auto Advance to Next Round"}
-                  </button>
-                </div>
-              )}
-
-              {/* Schedule Section */}
-              <div className="bg-gray-50 p-4 rounded-lg border">
-                <h3 className="font-semibold mb-3 text-gray-800">Schedule</h3>
-                <input
-                  type="datetime-local"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Is Scheduled Toggle */}
-              <div className="bg-gray-50 p-4 rounded-lg border">
-                <h3 className="font-semibold mb-3 text-gray-800">Is Scheduled?</h3>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700">
-                    {isScheduled ? "Yes, this match is scheduled" : "Not scheduled"}
-                  </span>
-                  <button
-                    onClick={() => setIsScheduled(prev => !prev)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                      isScheduled ? "bg-green-500" : "bg-gray-300"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                        isScheduled ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
-              <button
-                onClick={() => setSelectedMatch(null)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveMatchConfig}
-                disabled={updatingMatch}
-                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                {updatingMatch ? "Saving..." : "Save Configuration"}
-              </button>
-            </div>
+          {/* Set Winner Indicator */}
+          <div className="flex items-center gap-2 min-w-[80px]">
+            {set.completed && (
+              <>
+                <Trophy className="text-yellow-500" />
+                <span className="text-sm font-medium">
+                  {set.winner === 'teamA' ? 
+                    (selectedMatch.fixture?.teamA ? (idNameMap[selectedMatch.fixture.teamA] || "Team A") : "Team A") : 
+                    (selectedMatch.fixture?.teamB ? (idNameMap[selectedMatch.fixture.teamB] || "Team B") : "Team B")
+                  }
+                </span>
+              </>
+            )}
           </div>
         </div>
-      )}
+      );
+    })}
+  </div>
+  
+  {/* Match Status */}
+  <div className="mt-4 p-3 bg-blue-50 rounded border">
+    <div className="flex items-center justify-between">
+      <span className="text-sm font-medium text-gray-700">Match Status:</span>
+      <span className={`text-sm font-bold ${
+        selectedMatch.fixture?.status === 'completed' ? 'text-green-600' : 'text-blue-600'
+      }`}>
+        {selectedMatch.fixture?.status === 'completed' ? 'COMPLETED' : 'ONGOING'}
+      </span>
     </div>
-  );
+    
+    {selectedMatch.fixture?.status === 'completed' && selectedMatch.fixture?.winner && (
+      <div className="mt-2 text-center">
+        <span className="text-lg font-bold text-green-600">
+          🏆 Winner: {idNameMap[selectedMatch.fixture.winner] || 'Unknown'}
+        </span>
+      </div>
+    )}
+  </div>
+{/* Auto-Advance for Bye Matches */}
+{selectedMatch.fixture && 
+ ((selectedMatch.fixture.teamA && !selectedMatch.fixture.teamB) || 
+  (!selectedMatch.fixture.teamA && selectedMatch.fixture.teamB)) && (
+  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+    <h3 className="font-semibold mb-3 text-gray-800 flex items-center gap-2">
+      <span>🏃‍♂️</span>
+      Bye Match - Auto Advance
+    </h3>
+    <p className="text-sm text-gray-600 mb-3">
+      This match has only one team. Click below to automatically advance them to the next round.
+    </p>
+    <button
+      onClick={handleAutoAdvance}
+      disabled={updatingMatch}
+      className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-lg font-semibold hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 transition-all"
+    >
+      {updatingMatch ? "Advancing..." : "Auto Advance to Next Round"}
+    </button>
+  </div>
+)}
+{/* Schedule Section */}
+<div className="bg-gray-50 p-4 rounded-lg border">
+  <h3 className="font-semibold mb-3 text-gray-800">Schedule</h3>
+  <input 
+    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+
+    type="datetime-local"
+    value={selectedDate}
+    onChange={(e) => setSelectedDate(e.target.value)}
+  />
+</div>
+
+{/* Is Scheduled Toggle */}
+<div className="bg-gray-50 p-4 rounded-lg border">
+  <h3 className="font-semibold mb-3 text-gray-800">Is Scheduled?</h3>
+  <div className="flex items-center justify-between">
+    <span className="text-sm text-gray-700">
+      {isScheduled ? "Yes, this match is scheduled" : "Not scheduled"}
+    </span>
+    <button
+      onClick={() => setIsScheduled(prev => !prev)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+        isScheduled ? "bg-green-500" : "bg-gray-300"
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+          isScheduled ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </button>
+  </div>
+</div>
+
+{/* Modal Footer */}
+<div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
+  <button
+    onClick={() => setSelectedMatch(null)}
+    className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded transition-colors"
+  >
+    Cancel
+  </button>
+  <button
+    onClick={saveMatchConfig}
+    disabled={updatingMatch}
+    className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+  >
+    {updatingMatch ? "Saving..." : "Save Configuration"}
+  </button>
+  </div>
+
+        </div> {/* end modal container */}
+       {/* end selectedMatch conditional */}
+
+    </div> {/* end max-w-7xl */}
+  </div> {/* end min-h-screen */}
+</div>
+      )}
+
+      {/* Seeding Modal - Rendered at top level to avoid z-index issues */}
+      {showSeedingModal && (
+        <SeedingModal
+          participants={participants}
+          onCancel={() => setShowSeedingModal(false)}
+          onConfirm={handleConfirmSeeding}
+        />
+      )}
+</div>
+
+    );
 };
 
 export default TournamentBracket;

@@ -340,7 +340,7 @@ export const createFixture = async (req, res) => {
 export const generateFixtures = async (req, res) => {
   try {
     const { tournamentId } = req.params;
-    const { eventId, force = false } = req.body || {};
+    const { eventId, force = false, seedOrder = [] } = req.body || {};
 
     if (!isValidId(tournamentId)) {
       return res.json({ success: false, message: "Invalid tournament id" });
@@ -437,7 +437,14 @@ export const generateFixtures = async (req, res) => {
     }
 
     // Knockout Generation
-    participants = participants.sort(() => 0.5 - Math.random());
+    if (Array.isArray(seedOrder) && seedOrder.length >= 2) {
+      // retain provided order and append any missing ids randomly
+      const remaining = participants.filter((id) => !seedOrder.includes(id));
+      remaining.sort(() => 0.5 - Math.random());
+      participants = [...seedOrder, ...remaining];
+    } else {
+      participants = participants.sort(() => 0.5 - Math.random());
+    }
     const nextPower = Math.pow(2, Math.ceil(Math.log2(participants.length)));
     while (participants.length < nextPower) participants.push(null);
 

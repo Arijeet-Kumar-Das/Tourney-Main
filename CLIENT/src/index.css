@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 @import 'tailwindcss';
 
 @custom-variant dark (&:is(.dark *));
@@ -113,9 +114,10 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+  body, #root, .MuiTypography-root, .MuiContainer-root, .MuiCard-root {
+  font-family: 'Roboto', sans-serif !important;
+}
+
 }
 
 .MuiContainer-root {

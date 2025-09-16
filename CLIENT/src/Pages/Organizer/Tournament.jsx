@@ -15,7 +15,6 @@ import Events from "./Events";
 import Teams from "./Teams";
 import Notification from "./Notification";
 import Payments from "./Payments";
-import Scores from "./Scores";
 import Settings from "./Settings";
 import Fixtures from "./Fixtures";
 
@@ -48,6 +47,18 @@ const Tournament = () => {
   const [activeTab, setActiveTab] = useState("basic-info");
   // Modal editing state
   const [isEditing, setIsEditing] = useState(false);
+
+  // Disable background scroll when modal is open
+  useEffect(() => {
+    if (isEditing) {
+      // store previous overflow to restore later
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [isEditing]);
   const [formData, setFormData] = useState({});
   const [editFormData, setEditFormData] = useState({
     name: "",
@@ -107,7 +118,7 @@ const Tournament = () => {
     { id: "teams", label: "Teams" },
     { id: "notifications", label: "Notifications" },
     { id: "fixtures", label: "Fixtures" },
-    { id: "live-scoring", label: "Live Scoring" },
+    // { id: "live-scoring", label: "Live Scoring" },
     { id: "payment", label: "Payment" },
     { id: "settings", label: "Settings" },
   ];
@@ -521,11 +532,6 @@ _id : "68682f5e643f91a48cb952b1"
           </div>
         )}
 
-        {activeTab === "live-scoring" && (
-          <div className="tournament-tab-content">
-            <Scores />
-          </div>
-        )}
 
         {activeTab === "settings" && (
           <div className="tournament-tab-content">

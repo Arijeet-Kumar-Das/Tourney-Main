@@ -32,7 +32,7 @@ const RoleSelection = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="max-w-4xl w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to TournamentHub</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Tourney24</h1>
           <p className="text-gray-600">Choose your role to continue</p>
         </div>
 

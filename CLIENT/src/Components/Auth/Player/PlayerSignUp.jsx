@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import '../CSS/PlayerSignUp.css';
-import { IoChevronBack, IoCloudUploadOutline, IoCalendarOutline } from 'react-icons/io5';
-
-import {useNavigate} from 'react-router-dom';
-
-
+import { IoChevronBack, IoCloudUploadOutline } from 'react-icons/io5';
+import { useNavigate } from 'react-router-dom';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { PlayerContext } from '../../../Contexts/PlayerContext/PlayerContext';
 import { useContext } from 'react';
 import { toast } from 'react-toastify';
@@ -87,13 +86,13 @@ const PlayerSignUp = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.fullName.trim() || !formData.email.trim() || !formData.password.trim() || !formData.phoneNumber || !formData.dateOfBirth || !formData.aadhaarCard) return;
+    if (!formData.fullName.trim() || !formData.email.trim() || !formData.password.trim() || !formData.phoneNumber || !formData.dateOfBirth) return;
 
     
     // // Simulate API call
     // setTimeout(() => {
-      //   console.log('Player registration:', formData);
-      //   setIsSubmitting(false);
+      //   console.log('Player registration:', formData);
+      //   setIsSubmitting(false);
       // }, 1500);
       
       // console.log(formData);
@@ -140,19 +139,24 @@ const PlayerSignUp = () => {
 
   const isFormValid = () => {
     return formData.fullName.trim() && 
-           formData.email.trim() && 
-           formData.password.trim() && 
-           formData.phoneNumber.trim() && 
-           formData.dateOfBirth.trim();
+             formData.email.trim() && 
+             formData.password.trim() && 
+             formData.phoneNumber.trim() && 
+             formData.dateOfBirth.trim();
   };
 
   return (
     <div className="player-registration-container">
       <div className="player-registration-wrapper">
+      <button className="player-reg-back-button" onClick={() => navigate('/')}>
+      <IoChevronBack className="player-reg-back-icon" />
+          Go to Home
+        </button>
         <button className="player-reg-back-button" onClick={()=>{navigate('/roleSelection')}}>
           <IoChevronBack className="player-reg-back-icon" />
           Back to role selection
         </button>
+        
 
         <div className="player-registration-card">
           <div className="player-registration-header">
@@ -228,24 +232,33 @@ const PlayerSignUp = () => {
               <label htmlFor="dateOfBirth" className="player-reg-form-label">
                 Date of Birth
               </label>
-              <label className="player-reg-date-input-wrapper" htmlFor='dateOfBirth'>
+              <div className="player-reg-date-input-wrapper">
                 <input
                   type="date"
                   id="dateOfBirth"
                   name="dateOfBirth"
                   value={formData.dateOfBirth}
-                  onChange={handleInputChange}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      dateOfBirth: e.target.value
+                    }));
+                  }}
                   className="player-reg-form-input player-reg-date-input"
-                  placeholder="mm/dd/yyyy"
+                  max={new Date().toISOString().split('T')[0]}
                   required
                 />
-                <IoCalendarOutline className="player-reg-date-icon" />
-              </label>
+                <label htmlFor="dateOfBirth" className="player-reg-date-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                  </svg>
+                </label>
+              </div>
             </div>
 
             <div className="player-reg-form-group">
               <label htmlFor="aadhaarCard" className="player-reg-form-label">
-                Aadhaar Card
+                Aadhaar Card (Optional)
               </label>
               <div className="player-reg-file-upload-wrapper">
                 <input
@@ -254,16 +267,21 @@ const PlayerSignUp = () => {
                   name="aadhaarCard"
                   onChange={handleAadhaar}
                   className="player-reg-file-input"
-                  accept=".pdf,.jpg,.jpeg,.png"
+                  accept=".jpg,.jpeg,.png"
                 />
-                <label htmlFor="aadhaarCard" className="player-reg-file-upload-label">
+                <label htmlFor="aadhaarCard" className="player-reg-file-upload-label flex flex-col">
                   <IoCloudUploadOutline className="player-reg-upload-icon" />
                   {
                     formData.aadhaarCard? 
                     <img src={formData?.aadhaarCard} className="player-reg-upload-text" />:
-                    <span className='player-reg-upload-text'>  Upload Aadhaar Card </span>
+                    <span className='player-reg-upload-text'>  Upload Aadhaar Card </span>
                   }
+                  <span className="block justify-center text-xs text-gray-500">
+                    Supported files: jpg, jpeg, png
+                  </span>
+                    
                 </label>
+                
               </div>
             </div>
 

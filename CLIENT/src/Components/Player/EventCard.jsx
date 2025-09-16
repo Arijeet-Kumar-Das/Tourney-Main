@@ -12,6 +12,7 @@ const EventCard = ({
   icon,
   tournamentId,
   eventId,
+  sport, // Added sport prop
   showFixtureButton = true,
 }) => {
   const navigate = useNavigate();
@@ -44,14 +45,18 @@ const EventCard = ({
 
   return (
     <Card className="mb-8 w-full max-w-3xl mx-auto shadow-md border border-gray-200 flex flex-col">
-      <CardContent className="p-6 flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-900">{name}</h3>
+      <CardContent className="px-6 py-2 flex flex-col">
+        <div className="flex items-center justify-center mb-4">
+          <h3 className="text-xl font-bold text-gray-900">Click here to register</h3>
           
-          <span className="text-2xl">{icon}</span>
+          {/* {sport && (
+            <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+              {sport}
+            </span>
+          )} */}
         </div>
 
-        <div className="space-y-2 text-gray-700 mb-6">
+        {/* <div className="space-y-2 text-gray-700 mb-6">
           <div className="flex justify-between">
             <span>Entry Fee:</span>
             <span className="font-medium">₹{fee.toLocaleString()}</span>
@@ -60,12 +65,12 @@ const EventCard = ({
             <span>Participants:</span>
             <span className="font-medium">{participants} </span>
           </div>
-        </div>
+        </div> */}
 
         <div className="flex flex-col gap-2">
           {!showFixtureButton && (
             <Button
-              className="w-full bg-red-500 hover:bg-red-800 text-white py-2 rounded-full cursor-pointer"
+              className="w-auto mx-auto bg-red-500 lg:text-2xl text-md hover:bg-red-800 text-white lg:p-7 p-3 rounded-full hover:scale-105 cursor-pointer transition-all duration-300"
               onClick={handleRegister}
             >
               Register Now

@@ -1,83 +1,87 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/Components/ui/button";
+import { Input } from "@/Components/ui/input";
+import { Facebook, Linkedin, Instagram, Twitter, MapPin, Mail, Phone } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="bg-primary text-white py-12">
-      <div className="container mx-auto px-4">
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Logo and Contact */}
-          <div className="space-y-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
-                <span className="text-primary font-bold text-xl">T</span>
+    <footer className="bg-red-600 text-white py-4">
+
+      <style jsx>{`
+        input::selection {
+          background: Highlight;
+          color: HighlightText;
+        }
+      `}</style>
+      {/* Footer Content */}
+      <div className="container mx-auto px-6">
+        {/* Equal 4 columns, aligned top */}
+        <div className="grid md:grid-cols-4 gap-12 items-center">
+
+          {/* Logo */}
+          <div className="flex flex-col items-start">
+            <img
+              src="/FootIcon.png"
+              alt="Tourney24 Logo"
+              className="h-70 w-auto object-contain"
+            />
+          </div>
+
+          {/* Get in Touch */}
+          <div className="space-y-8">
+            <h3 className="text-2xl font-bold">Get in Touch</h3>
+            <div className="space-y-2 text-sm text-white/90">
+              <div className="flex items-center space-x-2">
+                <MapPin className="w-5 h-5 flex-shrink-0 mt-1" />
+                <div>
+                  <p>1st R-Block Rajajinagar,</p>
+                  <p>Bengaluru 560010</p>
+                </div>
               </div>
-              <span className="text-2xl font-bold">TOURNEY 24</span>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-xl font-bold">Get in Touch</h3>
-
-              <div className="space-y-2">
-                <div className="flex items-center space-x-3">
-                  <div className="w-5 h-5 bg-white/20 rounded flex items-center justify-center">
-                    <span className="text-xs">📍</span>
-                  </div>
-                  <div>
-                    <p className="text-sm">8819 Ohio St, South Gate,</p>
-                    <p className="text-sm">CA 90280</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <div className="w-5 h-5 bg-white/20 rounded flex items-center justify-center">
-                    <span className="text-xs">✉️</span>
-                  </div>
-                  <p className="text-sm">Outeach@india.com</p>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <div className="w-5 h-5 bg-white/20 rounded flex items-center justify-center">
-                    <span className="text-xs">📞</span>
-                  </div>
-                  <p className="text-sm">+1-286-468-5755</p>
-                </div>
+              <div className="flex items-center space-x-2 py-4">
+                <Mail className="w-5 h-5 flex-shrink-0" />
+                <p>support@tourney24.com</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Phone className="w-5 h-5 flex-shrink-0" />
+                <p>+91 8095263150</p>
               </div>
             </div>
           </div>
 
           {/* Social Media */}
-          <div className="space-y-4">
+          <div className="flex flex-col items-center space-y-4">
             <div className="flex space-x-4">
-              {["∞", "in", "📷", "🐦"].map((icon, idx) => (
-                <div
-                  key={idx}
-                  className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors cursor-pointer"
-                >
-                  <span className="text-lg">{icon}</span>
-                </div>
-              ))}
+              <a href="#" className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition">
+                <Facebook className="w-5 h-5" />
+              </a>
+              <a href="#" className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition">
+                <Linkedin className="w-5 h-5" />
+              </a>
+              <a href="#" className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition">
+                <Instagram className="w-5 h-5" />
+              </a>
+              <a href="#" className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition">
+                <Twitter className="w-5 h-5" />
+              </a>
             </div>
-            <p className="text-sm text-white/80">Follow Us On Social Media</p>
+            <p className="text-sm text-white font-bold">Follow Us On Social Media</p>
           </div>
 
           {/* Newsletter */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold">Get Updates On Your Email</h3>
+            <h3 className="text-lg font-semibold">Get Updates On Your Email</h3>
             <div className="space-y-3">
-              <div>
-                <label className="block text-sm mb-2">Your Email</label>
-                <Input
-                  placeholder="Enter Your Email"
-                  className="bg-white/10 border-white/30 text-white placeholder:text-white/60"
-                />
-              </div>
-              <Button className="w-full bg-white text-primary hover:bg-white/90 font-semibold">
+              <Input
+                placeholder="Enter Your Email"
+                className="bg-red-600 text-white placeholder:text-white p-6"
+              />
+              <Button className="w-full bg-white text-red-600 hover:bg-gray-100 font-semibold">
                 Subscribe
               </Button>
             </div>
           </div>
+
         </div>
       </div>
     </footer>
