@@ -18,15 +18,15 @@ const RegistrationForm = () => {
   const { backend_URL } = useContext(PlayerContext);
   const location = useLocation();
   const { tournamentId: urlTournamentId } = useParams();
-  
+
   // State for events and loading
   const [events, setEvents] = useState([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  
+
   // Get tournament ID from URL or location state
   const TournamentId = urlTournamentId || location.state?.TournamentId;
-  
+
   // Get event details from selected event or location state
   const eventName = selectedEvent?.name || selectedEvent?.eventName || location.state?.eventName || "Event";
   const entryFee = selectedEvent?.entryFee || location.state?.entryFee || 0;
@@ -36,10 +36,6 @@ const RegistrationForm = () => {
   const [customFields, setCustomFields] = useState([]);
   const [members, setMembers] = useState([
     {
-      name: "",
-      mobile: "",
-      email: "",
-      academyName: "",
       customFieldValues: {}
     }
   ]);
@@ -57,7 +53,7 @@ const RegistrationForm = () => {
           credentials: 'include'
         });
         const data = await response.json();
-        
+
         if (data.success) {
           setEvents(data.message || []);
           // If there's an eventId in location state, select it
@@ -76,7 +72,7 @@ const RegistrationForm = () => {
       }
     };
 
-    
+
 
     fetchEvents();
   }, [TournamentId, backend_URL, location.state?.eventId]);
@@ -122,12 +118,12 @@ const RegistrationForm = () => {
           setCustomFields(data.message.settings.customFields);
           // Reinitialize members with new custom fields
           setMembers(members => members.map(member => ({
-            ...member,
             customFieldValues: data.message.settings.customFields.reduce((acc, field) => {
               acc[field.fieldName] = member.customFieldValues?.[field.fieldName] || "";
               return acc;
             }, {})
           })));
+
         } else {
           console.log('No custom fields found in response'); // Debug log
         }
@@ -143,18 +139,15 @@ const RegistrationForm = () => {
   const validate = () => {
     const newErrors = members.map(member => {
       const memberErrors = {};
-      if (!member.name.trim()) memberErrors.name = "Name is required";
-      if (!/^\d{10}$/.test(member.mobile)) memberErrors.mobile = "Enter a valid 10-digit mobile number";
-      if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(member.email)) memberErrors.email = "Enter a valid email";
-      if (!member.academyName.trim()) memberErrors.academyName = "Academy name is required";
       
+
       // Validate custom fields
       customFields.forEach(field => {
         if (field.isMandatory && !member.customFieldValues[field.fieldName]?.trim()) {
           memberErrors[field.fieldName] = `${field.fieldName} is required`;
         }
       });
-      
+
       return memberErrors;
     });
     return newErrors;
@@ -163,7 +156,7 @@ const RegistrationForm = () => {
   const handleChange = (index, e) => {
     const { name, value } = e.target;
     const updatedMembers = [...members];
-    
+
     // Check if this is a custom field
     if (customFields.some(field => field.fieldName === name)) {
       updatedMembers[index] = {
@@ -179,10 +172,10 @@ const RegistrationForm = () => {
         [name]: value
       };
     }
-    
+
     setMembers(updatedMembers);
   };
-  
+
   const addMember = () => {
     setMembers([...members, {
       name: "",
@@ -197,13 +190,13 @@ const RegistrationForm = () => {
     }]);
     setErrors([...errors, {}]);
   };
-  
+
   const removeMember = (index) => {
     if (members.length > 1) {
       const updatedMembers = [...members];
       updatedMembers.splice(index, 1);
       setMembers(updatedMembers);
-      
+
       const updatedErrors = [...errors];
       updatedErrors.splice(index, 1);
       setErrors(updatedErrors);
@@ -235,16 +228,16 @@ const RegistrationForm = () => {
 
     try {
       setLoading(true);
-      
+
       // 1. Create order on server
       const paymentAmount = entryFee * members.length;
-      
+
       console.log('Frontend - Sending payment request:', {
         amount: paymentAmount,
         members: members.length,
         backend_URL
       });
-      
+
       const orderResponse = await fetch(`${backend_URL}/api/payments/create-order`, {
         method: 'POST',
         credentials: 'include', // Include cookies for authentication
@@ -274,7 +267,7 @@ const RegistrationForm = () => {
         data: orderData,
         headers: Object.fromEntries(orderResponse.headers.entries())
       });
-      
+
       if (orderResponse.status === 401) {
         // Clear invalid token
         localStorage.removeItem('token');
@@ -282,7 +275,7 @@ const RegistrationForm = () => {
         window.location.href = '/login/player?sessionExpired=true';
         return;
       }
-      
+
       if (!orderResponse.ok) {
         throw new Error(orderData.message || 'Failed to create order');
       }
@@ -368,102 +361,102 @@ const RegistrationForm = () => {
   const submitRegistration = async () => {
     let allSuccess = true;
     let errorMsg = '';
-    
+
     try {
       setLoading(true);
       const validationErrors = validate();
       setErrors(validationErrors);
-      
+
       const hasErrors = validationErrors.some(error => Object.keys(error).length > 0);
       if (hasErrors) {
         setLoading(false);
         return;
       }
 
-    if (!TournamentId || !eventId) {
-      alert("Tournament or Event ID missing!");
-      setLoading(false);
-      return;
-    }
-
-    let allSuccess = true;
-    let errorMsg = '';
-
-    if (members.length > 1) {
-      // Group registration
-      if (!teamName || !teamName.trim()) {
-        toast.error("Team name is required for group registration.");
+      if (!TournamentId || !eventId) {
+        alert("Tournament or Event ID missing!");
         setLoading(false);
         return;
       }
-      const membersPayload = members.map(member => ({
-        name: member.name,
-        email: member.email,
-        mobile: member.mobile,
-        academyName: member.academyName,
-        feesPaid: true, 
-        customFields: member.customFieldValues,
-        entry: 'online'
-      }));
-      try {
-        const res = await fetch(
-          `${backend_URL}/api/player/registerGroupTeam/${TournamentId}/${eventId}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ teamName, members: membersPayload, entry: 'online' }),
-            credentials: 'include',
-          }
-        );
-        const data = await res.json();
-        if (!data.success) {
-          allSuccess = false;
-          errorMsg = data.message || 'Group registration failed.';
-        }
-      } catch (err) {
-        allSuccess = false;
-        errorMsg = err.message || 'Network error during group registration.';
-        setLoading(false);
-      }
-    } else {
-      // Individual registration (keep previous logic)
-      const member = members[0];
-      const payload = {
-        name: member.name,
-        email: member.email,
-        mobile: member.mobile,
-        academyName: member.academyName,
-        feesPaid: true,
-        customFields: member.customFieldValues,
-        entry: 'online'
-      };
-      try {
-        const res = await fetch(
-          `${backend_URL}/api/player/registerIndividualTeam/${TournamentId}/${eventId}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            credentials: 'include',
-          }
-        );
-        const data = await res.json();
-        if (!data.success) {
-          allSuccess = false;
-          errorMsg = data.message || 'Registration failed.';
-        }
-      } catch (err) {
-        allSuccess = false;
-        errorMsg = err.message || 'Network error during registration.';
-      }
-    }
 
-    if (allSuccess) {
-      toast.success('Registration submitted successfully!');
-      setTimeout(() => {
-        navigate('/tournaments');  
-      });
-    } else {
+      let allSuccess = true;
+      let errorMsg = '';
+
+      if (members.length > 1) {
+        // Group registration
+        if (!teamName || !teamName.trim()) {
+          toast.error("Team name is required for group registration.");
+          setLoading(false);
+          return;
+        }
+        const membersPayload = members.map(member => ({
+          name: member.name,
+          email: member.email,
+          mobile: member.mobile,
+          academyName: member.academyName,
+          feesPaid: true,
+          customFields: member.customFieldValues,
+          entry: 'online'
+        }));
+        try {
+          const res = await fetch(
+            `${backend_URL}/api/player/registerGroupTeam/${TournamentId}/${eventId}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ teamName, members: membersPayload, entry: 'online' }),
+              credentials: 'include',
+            }
+          );
+          const data = await res.json();
+          if (!data.success) {
+            allSuccess = false;
+            errorMsg = data.message || 'Group registration failed.';
+          }
+        } catch (err) {
+          allSuccess = false;
+          errorMsg = err.message || 'Network error during group registration.';
+          setLoading(false);
+        }
+      } else {
+        // Individual registration (keep previous logic)
+        const member = members[0];
+        const payload = {
+          name: member.name,
+          email: member.email,
+          mobile: member.mobile,
+          academyName: member.academyName,
+          feesPaid: true,
+          customFields: member.customFieldValues,
+          entry: 'online'
+        };
+        try {
+          const res = await fetch(
+            `${backend_URL}/api/player/registerIndividualTeam/${TournamentId}/${eventId}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+              credentials: 'include',
+            }
+          );
+          const data = await res.json();
+          if (!data.success) {
+            allSuccess = false;
+            errorMsg = data.message || 'Registration failed.';
+          }
+        } catch (err) {
+          allSuccess = false;
+          errorMsg = err.message || 'Network error during registration.';
+        }
+      }
+
+      if (allSuccess) {
+        toast.success('Registration submitted successfully!');
+        setTimeout(() => {
+          navigate('/tournaments');
+        });
+      } else {
         console.log("Error in registration:", errorMsg);
         toast.error(`Error: ${errorMsg}`);
       }
@@ -477,219 +470,157 @@ const RegistrationForm = () => {
 
 
   return (
-  <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
-    <Navigation />
-    <main className="flex-grow flex items-center justify-center pt-30 pb-12">
-      <Card className="w-full max-w-2xl rounded-2xl shadow-lg p-0 mx-4">
-      <div className="bg-red-500 text-white py-4 px-6 rounded-t-2xl text-center">
-    <h2 className="text-2xl font-bold">
-      {selectedEvent ? `Register for ${eventName}` : "Select an Event"}
-    </h2>
-  </div>
-        <CardContent className="p-8">
-          
-
-          {/* Event Selection Dropdown */}
-          <div className="mb-6">
-            <label className="block text-lg md:text-xl font-medium text-gray-700 mb-2">
-              Select Event
-            </label>
-            <select
-  onChange={(e) => handleEventSelect(e.target.value)}
-  value={selectedEvent?._id || ""}
-  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-  disabled={loadingEvents || events.length === 0}
->
-  <option value="">Select an event...</option>
-  {events.map((event) => (
-    <option key={event._id} value={event._id}>
-      {event.name || event.eventName} (₹{event.entryFee || "0"})
-    </option>
-  ))}
-</select>
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
+      <Navigation />
+      <main className="flex-grow flex items-center justify-center pt-30 pb-12">
+        <Card className="w-full max-w-2xl rounded-2xl shadow-lg p-0 mx-4">
+          <div className="bg-red-500 text-white py-4 px-6 rounded-t-2xl text-center">
+            <h2 className="text-2xl font-bold">
+              {selectedEvent ? `Register for ${eventName}` : "Select an Event"}
+            </h2>
           </div>
+          <CardContent className="p-8">
 
-          {/* Empty State */}
-          {!selectedEvent ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <div className="flex flex-col items-center space-y-2">
-                <AlertCircle className="h-12 w-12 text-gray-400" />
-                <p className="text-gray-500 font-medium">
-                  Please select an event to continue
-                </p>
-              </div>
-            </div>
-          ) : loading ? (
-            // Loading State
-            <div className="flex flex-col justify-center items-center h-48 space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin text-red-500" />
-              <p className="text-sm text-gray-500">Loading registration form...</p>
-            </div>
-          ) : (
-            // Registration Form
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Team Name (for group registration) */}
-              {members.length > 1 && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-1">
-                    Team Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="teamName"
-                    value={teamName}
-                    onChange={e => setTeamName(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Enter team name"
-                  />
-                </div>
-              )}
 
-              {members.map((member, index) => (
-                <div
-                key={index}
-                className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition hover:scale-[1.01]"
+            {/* Event Selection Dropdown */}
+            <div className="mb-6">
+              <label className="block text-lg md:text-xl font-medium text-gray-700 mb-2">
+                Select Event
+              </label>
+              <select
+                onChange={(e) => handleEventSelect(e.target.value)}
+                value={selectedEvent?._id || ""}
+                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={loadingEvents || events.length === 0}
               >
-                {/* 🔴 Member Header Bar */}
-                <div className="bg-red-500 text-white px-4 py-2 flex justify-between items-center">
-                  <h3 className="font-semibold">Member {index + 1}</h3>
-                  {members.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeMember(index)}
-                      className="text-white hover:text-gray-200"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  )}
+                <option value="">Select an event...</option>
+                {events.map((event) => (
+                  <option key={event._id} value={event._id}>
+                    {event.name || event.eventName} (₹{event.entryFee || "0"})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Empty State */}
+            {!selectedEvent ? (
+              <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                <div className="flex flex-col items-center space-y-2">
+                  <AlertCircle className="h-12 w-12 text-gray-400" />
+                  <p className="text-gray-500 font-medium">
+                    Please select an event to continue
+                  </p>
                 </div>
-
-                  <div className="p-5 space-y-4">
-                    {/* Name */}
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Name</label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={member.name}
-                        onChange={(e) => handleChange(index, e)}
-                        className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="Enter name"
-                      />
-                      {errors[index]?.name && (
-                        <p className="text-red-500 text-xs mt-1">{errors[index].name}</p>
-                      )}
-                    </div>
-
-                    {/* Mobile */}
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Mobile Number</label>
-                      <input
-                        type="tel"
-                        name="mobile"
-                        value={member.mobile}
-                        onChange={(e) => handleChange(index, e)}
-                        className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="10-digit mobile number"
-                        maxLength={10}
-                      />
-                      {errors[index]?.mobile && (
-                        <p className="text-red-500 text-xs mt-1">{errors[index].mobile}</p>
-                      )}
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Email</label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={member.email}
-                        onChange={(e) => handleChange(index, e)}
-                        className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="you@example.com"
-                      />
-                      {errors[index]?.email && (
-                        <p className="text-red-500 text-xs mt-1">{errors[index].email}</p>
-                      )}
-                    </div>
-
-                    {/* Academy Name */}
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Academy Name</label>
-                      <input
-                        type="text"
-                        name="academyName"
-                        value={member.academyName}
-                        onChange={(e) => handleChange(index, e)}
-                        className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="Enter academy name"
-                      />
-                      {errors[index]?.academyName && (
-                        <p className="text-red-500 text-xs mt-1">{errors[index].academyName}</p>
-                      )}
-                    </div>
-
-                    {/* Custom Fields */}
-                    {customFields.map((field) => (
-                      <div key={field.fieldName}>
-                        <label className="block text-sm font-medium mb-1">
-                          {field.fieldName}
-                          {field.isMandatory && <span className="text-red-500 ml-1">*</span>}
-                        </label>
-                        <input
-                          type="text"
-                          name={field.fieldName}
-                          value={member.customFieldValues[field.fieldName] || ""}
-                          onChange={(e) => handleChange(index, e)}
-                          className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder={field.hintText || `Enter ${field.fieldName}`}
-                        />
-                        {errors[index]?.[field.fieldName] && (
-                          <p className="text-red-500 text-xs mt-1">{errors[index][field.fieldName]}</p>
-                        )}
-                      </div>
-                    ))}
+              </div>
+            ) : loading ? (
+              // Loading State
+              <div className="flex flex-col justify-center items-center h-48 space-y-3">
+                <Loader2 className="h-8 w-8 animate-spin text-red-500" />
+                <p className="text-sm text-gray-500">Loading registration form...</p>
+              </div>
+            ) : (
+              // Registration Form
+              <form onSubmit={handleSubmit} className="space-y-8">
+                {/* Team Name (for group registration) */}
+                {members.length > 1 && (
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium mb-1">
+                      Team Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="teamName"
+                      value={teamName}
+                      onChange={e => setTeamName(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Enter team name"
+                    />
                   </div>
+                )}
+
+                {members.map((member, index) => (
+                  <div
+                    key={index}
+                    className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition hover:scale-[1.01]"
+                  >
+                    {/* 🔴 Member Header Bar */}
+                    <div className="bg-red-500 text-white px-4 py-2 flex justify-between items-center">
+                      <h3 className="font-semibold">Member {index + 1}</h3>
+                      {members.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeMember(index)}
+                          className="text-white hover:text-gray-200"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="p-5 space-y-4">
+                  
+
+                      {/* Custom Fields */}
+                      {customFields.map((field) => (
+                        <div key={field.fieldName}>
+                          <label className="block text-sm font-medium mb-1">
+                            {field.fieldName}
+                            {field.isMandatory && <span className="text-red-500 ml-1">*</span>}
+                          </label>
+                          <input
+                            type="text"
+                            name={field.fieldName}
+                            value={member.customFieldValues[field.fieldName] || ""}
+                            onChange={(e) => handleChange(index, e)}
+                            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder={field.hintText || `Enter ${field.fieldName}`}
+                          />
+                          {errors[index]?.[field.fieldName] && (
+                            <p className="text-red-500 text-xs mt-1">{errors[index][field.fieldName]}</p>
+                          )}
+                        </div>
+                      ))}
+
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add Member Button */}
+                <div className="flex justify-center">
+                  <Button
+                    type="button"
+                    onClick={addMember}
+                    variant="outline"
+                    className="border border-dashed border-gray-300 hover:border-red-500 text-gray-600 hover:text-red-500 rounded-lg px-4 py-2 flex items-center gap-2"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Member
+                  </Button>
                 </div>
-              ))}
 
-              {/* Add Member Button */}
-              <div className="flex justify-center">
+                {/* Entry Fee Display */}
+                <div className="flex justify-between items-center bg-gray-100 px-4 py-3 rounded-lg">
+                  <span className="font-medium text-gray-700">Total Entry Fee</span>
+                  <span className="font-semibold text-red-500 text-lg">
+                    ₹{(entryFee * members.length).toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Submit */}
                 <Button
-                  type="button"
-                  onClick={addMember}
-                  variant="outline"
-                  className="border border-dashed border-gray-300 hover:border-red-500 text-gray-600 hover:text-red-500 rounded-lg px-4 py-2 flex items-center gap-2"
+                  type="submit"
+                  className="w-full bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-primary/90"
                 >
-                  <Plus className="w-5 h-5" />
-                  Add Member
+                  Submit Registration
                 </Button>
-              </div>
-
-              {/* Entry Fee Display */}
-              <div className="flex justify-between items-center bg-gray-100 px-4 py-3 rounded-lg">
-                <span className="font-medium text-gray-700">Total Entry Fee</span>
-                <span className="font-semibold text-red-500 text-lg">
-                  ₹{(entryFee * members.length).toLocaleString()}
-                </span>
-              </div>
-
-              {/* Submit */}
-              <Button
-                type="submit"
-                className="w-full bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-primary/90"
-              >
-                Submit Registration
-              </Button>
-            </form>
-          )}
-        </CardContent>
-      </Card>
-    </main>
-    <Footer />
-  </div>
-);
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+      <Footer />
+    </div>
+  );
 };
 
 export default RegistrationForm;
