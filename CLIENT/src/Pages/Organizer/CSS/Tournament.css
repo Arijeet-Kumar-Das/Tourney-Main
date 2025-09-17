@@ -170,6 +170,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  overflow: hidden;                    /* prevent overlay from scrolling, keep scroll within modal */
   z-index: 1000;
   animation: fadeIn 0.3s ease-in-out;
 }
@@ -188,7 +190,32 @@
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   animation: zoomIn 0.25s ease;
   max-height: 90vh;
+  overflow: hidden; /* keep scroll within .modal-body */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scoped style for tournament edit modal to avoid conflicts with other global .modal-content rules */
+.tournament-edit-modal {
+  width: 90%;
+  max-width: 600px;
+  height: 90vh;              /* fixed height to allow inner scrolling */
+  display: flex;
+  flex-direction: column;
+  overscroll-behavior: contain;
+}
+
+/* modal form scroll area */
+.modal-body {
+  flex: 1 1 auto;
   overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tournament-edit-modal .modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 @keyframes zoomIn {

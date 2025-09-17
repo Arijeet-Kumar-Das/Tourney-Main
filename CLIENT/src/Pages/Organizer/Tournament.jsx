@@ -332,46 +332,48 @@ _id : "68682f5e643f91a48cb952b1"
 
       {/* Edit Modal */}
       {isEditing && (
-        <div className="modal-overlay" onClick={handleCancelClick}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Edit Tournament Details</h2>
-            <div className="modal-form">
-              <label>
-                Name:
-                <input type="text" name="name" value={editFormData.name} onChange={handleInputChange} />
-              </label>
-              <label>
-                Sport:
-                <input type="text" name="sport" value={editFormData.sport} onChange={handleInputChange} />
-              </label>
-              <label>
-                Start Date:
-                <input type="date" name="startDate" value={editFormData.startDate} onChange={handleInputChange} />
-              </label>
-              <label>
-                End Date:
-                <input type="date" name="endDate" value={editFormData.endDate} onChange={handleInputChange} />
-              </label>
-              <label>
-                Address:
-                <input type="text" name="address" value={editFormData.address} onChange={handleInputChange} />
-              </label>
-              <label>
-                Maps Link:
-                <input type="text" name="mapsLink" value={editFormData.mapsLink} onChange={handleInputChange} />
-              </label>
-              <label style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                <input type="checkbox" name="isFeatured" checked={editFormData.isFeatured} onChange={handleInputChange} />
-                Featured
-              </label>
-              <label>
-                Description:
-                <textarea name="description" rows="4" value={editFormData.description} onChange={handleInputChange} />
-              </label>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={handleCancelClick}>
+          <div className="bg-white w-11/12 max-w-lg max-h-[90vh] overflow-hidden flex flex-col rounded-lg shadow-xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold mb-4 px-6 pt-6">Edit Tournament Details</h2>
+            <div className="flex-1 overflow-y-auto px-6">
+            <div className="space-y-4">
+              <div>
+                <span className="block text-sm font-medium text-slate-600 mb-1">Name</span>
+                <input type="text" name="name" value={editFormData.name} onChange={handleInputChange} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <span className="block text-sm font-medium text-slate-600 mb-1">Sport</span>
+                <input type="text" name="sport" value={editFormData.sport} onChange={handleInputChange} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <span className="block text-sm font-medium text-slate-600 mb-1">Start Date</span>
+                <input type="date" name="startDate" value={editFormData.startDate} onChange={handleInputChange} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <span className="block text-sm font-medium text-slate-600 mb-1">End Date</span>
+                <input type="date" name="endDate" value={editFormData.endDate} onChange={handleInputChange} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <span className="block text-sm font-medium text-slate-600 mb-1">Address</span>
+                <input type="text" name="address" value={editFormData.address} onChange={handleInputChange} className="w-full border rounded-md p-2" />
+              </div>
+              <div>
+                <span className="block text-sm font-medium text-slate-600 mb-1">Maps Link</span>
+                <input type="text" name="mapsLink" value={editFormData.mapsLink} onChange={handleInputChange} className="w-full border rounded-md p-2" />
+              </div>
+              <div className="flex items-center gap-3">
+                <input type="checkbox" name="isFeatured" checked={editFormData.isFeatured} onChange={handleInputChange} className="w-4 h-4" />
+                <span className="text-sm font-medium text-slate-700">Featured</span>
+              </div>
+              <div>
+                <span className="block text-sm font-medium text-slate-600 mb-1">Description</span>
+                <textarea name="description" rows="4" value={editFormData.description} onChange={handleInputChange} className="w-full border rounded-md p-2" />
+              </div>
             </div>
-            <div className="modal-actions">
-              <button className="tournament-action-btn tournament-save-btn" onClick={handleSaveClick}>Save</button>
-              <button className="tournament-action-btn tournament-cancel-btn" onClick={handleCancelClick}>Cancel</button>
+            </div>
+            <div className="flex justify-end gap-3 px-6 pb-6 pt-4 border-t">
+              <button className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-md" onClick={handleSaveClick}>Save</button>
+              <button className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-md" onClick={handleCancelClick}>Cancel</button>
             </div>
           </div>
         </div>
