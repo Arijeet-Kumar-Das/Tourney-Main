@@ -137,58 +137,44 @@ const RegistrationForm = () => {
   }, [TournamentId, selectedEvent, backend_URL]);
 
   const validate = () => {
-    const newErrors = members.map(member => {
+    return members.map(member => {
       const memberErrors = {};
-      
-
-      // Validate custom fields
       customFields.forEach(field => {
         if (field.isMandatory && !member.customFieldValues[field.fieldName]?.trim()) {
           memberErrors[field.fieldName] = `${field.fieldName} is required`;
         }
       });
-
       return memberErrors;
     });
-    return newErrors;
   };
+  
 
   const handleChange = (index, e) => {
     const { name, value } = e.target;
-    const updatedMembers = [...members];
-
-    // Check if this is a custom field
-    if (customFields.some(field => field.fieldName === name)) {
-      updatedMembers[index] = {
-        ...updatedMembers[index],
+    setMembers(prev => {
+      const updated = [...prev];
+      updated[index] = {
         customFieldValues: {
-          ...updatedMembers[index].customFieldValues,
+          ...updated[index].customFieldValues,
           [name]: value
         }
       };
-    } else {
-      updatedMembers[index] = {
-        ...updatedMembers[index],
-        [name]: value
-      };
-    }
-
-    setMembers(updatedMembers);
+      return updated;
+    });
   };
+  
 
   const addMember = () => {
-    setMembers([...members, {
-      name: "",
-      mobile: "",
-      email: "",
-      academyName: "",
-      // Initialize custom fields for the new member
-      customFieldValues: customFields.reduce((acc, field) => {
-        acc[field.fieldName] = "";
-        return acc;
-      }, {})
-    }]);
-    setErrors([...errors, {}]);
+    setMembers(prev => [
+      ...prev,
+      {
+        customFieldValues: customFields.reduce((acc, field) => {
+          acc[field.fieldName] = "";
+          return acc;
+        }, {})
+      }
+    ]);
+    setErrors(prev => [...prev, {}]);
   };
 
   const removeMember = (index) => {
@@ -251,10 +237,7 @@ const RegistrationForm = () => {
           eventId,
           teamName: teamName || null,
           members: members.map(m => ({
-            name: m.name,
-            email: m.email,
-            mobile: m.mobile,
-            academyName: m.academyName,
+            
             customFields: m.customFieldValues
           }))
         })
@@ -305,10 +288,7 @@ const RegistrationForm = () => {
                 eventId,
                 teamName: teamName || null,
                 members: members.map(m => ({
-                  name: m.name,
-                  email: m.email,
-                  mobile: m.mobile,
-                  academyName: m.academyName,
+                  
                   customFields: m.customFieldValues
                 }))
               })
@@ -390,11 +370,7 @@ const RegistrationForm = () => {
           return;
         }
         const membersPayload = members.map(member => ({
-          name: member.name,
-          email: member.email,
-          mobile: member.mobile,
-          academyName: member.academyName,
-          feesPaid: true,
+          
           customFields: member.customFieldValues,
           entry: 'online'
         }));
@@ -422,11 +398,7 @@ const RegistrationForm = () => {
         // Individual registration (keep previous logic)
         const member = members[0];
         const payload = {
-          name: member.name,
-          email: member.email,
-          mobile: member.mobile,
-          academyName: member.academyName,
-          feesPaid: true,
+          
           customFields: member.customFieldValues,
           entry: 'online'
         };
@@ -522,21 +494,7 @@ const RegistrationForm = () => {
               // Registration Form
               <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Team Name (for group registration) */}
-                {members.length > 1 && (
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium mb-1">
-                      Team Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="teamName"
-                      value={teamName}
-                      onChange={e => setTeamName(e.target.value)}
-                      className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="Enter team name"
-                    />
-                  </div>
-                )}
+                
 
                 {members.map((member, index) => (
                   <div
@@ -597,6 +555,21 @@ const RegistrationForm = () => {
                     Add Member
                   </Button>
                 </div>
+                {members.length > 1 && (
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium mb-1">
+                      Team Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="teamName"
+                      value={teamName}
+                      onChange={e => setTeamName(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Enter team name"
+                    />
+                  </div>
+                )}
 
                 {/* Entry Fee Display */}
                 <div className="flex justify-between items-center bg-gray-100 px-4 py-3 rounded-lg">

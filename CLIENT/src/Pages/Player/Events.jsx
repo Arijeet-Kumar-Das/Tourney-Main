@@ -297,7 +297,7 @@ const Event = () => {
   }
 
   return (
-    <div className="w-full min-h-screen " style={{backgroundColor: '#F8F2F2'}}>
+    <div className="w-full min-h-screen " style={{ backgroundColor: '#F8F2F2' }}>
       {/* Add the animation styles */}
       <style>{animationStyles}</style>
 
@@ -314,15 +314,15 @@ const Event = () => {
 
 
           <Card className={`bg-card rounded-2xl shadow-lg hover:shadow-xl transition-shadow mb-12 overflow-hidden p-5 ${pageLoaded ? 'animate-slide-up delay-100' : 'opacity-0'}`}>
-            <div className="flex flex-col lg:flex-row h-full gap-6">
+            <div className="flex flex-row h-full gap-6">
               {/* Image Section */}
-              <div className="w-full lg:w-80 flex-shrink-0 h-64 sm:h-80 md:h-[400px] relative group rounded-lg overflow-hidden">
-              <img
+              <div className="w-40 sm:w-40 md:w-60 lg:w-80 flex-shrink-0 h-50 sm:h-40 md:h-60 lg:h-[400px] relative group rounded-lg overflow-hidden">
+                <img
                   src={tournament?.imageUrl || "/placeholder.svg"}
                   alt={tournament?.title}
                   className="w-full h-full object-cover object-center"
                 />
-                {/* View Poster Button - Only visible on hover */}
+                {/* View Poster Button */}
                 <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 cursor-pointer">
                   <button
                     onClick={() => window.open(tournament?.imageUrl || "/placeholder.svg", "_blank")}
@@ -334,49 +334,53 @@ const Event = () => {
               </div>
 
               {/* Text Section */}
-              <div className="flex-1 p-8 flex flex-col justify-between">
+              <div className="flex-1 p-4 sm:p-6 flex flex-col justify-between">
                 <div>
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-4 capitalize">
-                {tournament?.title}</h2>
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary mb-4 capitalize">
+                    {tournament?.title}
+                  </h2>
 
                   <div className="space-y-4 mb-6">
-                    <div className="flex items-center text-muted-foreground">
-                      <MapPin className="w-5 h-5 text-primary mr-2 flex-shrink-0" />
-                      <span className="text-md lg:text-lg text-black">{tournament?.location || "Location not specified"}</span>
-                    </div>
+                  <div className="flex items-start text-muted-foreground">
+  <MapPin className="md:w-5 md:h-5 w-4 h-4 text-primary flex-shrink-0 mt-1 mr-2" />
+  <p className="text-sm sm:text-base lg:text-lg text-black break-words">
+    {tournament?.location || "Location not specified"}
+  </p>
+</div>
 
-                    {/* Google Map Embed */}
                     {tournament?.location && (
-  <div className="mt-4 rounded-xl overflow-hidden shadow-md h-64 w-full sm:w-3/4 lg:w-1/2 mx-auto mb-8">
-    <iframe
-      title="Tournament Location"
-      width="100%"
-      height="100%"
-      style={{ border: 0 }}
-      loading="lazy"
-      allowFullScreen
-      referrerPolicy="no-referrer-when-downgrade"
-      src={`https://www.google.com/maps?q=${encodeURIComponent(tournament.location)}&output=embed`}
-    ></iframe>
-  </div>
+  <div className="mt-4">
+  <a
+    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(tournament.location)}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-600 text-sm md:text-base hover:underline"
+  >
+    Map Link
+  </a>
+</div>
+
 )}
 
+
                     <div className="flex items-center text-muted-foreground">
-                      <Calendar className="w-5 h-5 text-primary mr-2" />
-                      <span className="text-md lg:text-lg text-black">
+                      <Calendar className="md:w-5 md:h-5 w-4 h-4 text-primary mr-2 flex-shrink-0 mt-1 sm:mt-0" />
+                      <span className="text-sm sm:text-base lg:text-lg text-black">
                         {tournament?.date || "Date not specified"}
                         {tournament?.endDate && ` - ${tournament?.endDate}`}
                       </span>
                     </div>
 
+                    <hr className="my-6 border-t border-red-300" />
+
                     <div className="mt-4">
-                      <h4 className="text-xl font-semibold text-primary mb-2 mt-10">Events :</h4>
+                      <h4 className="text-lg md:text-xl font-semibold text-primary mb-2 mt-6">Events :</h4>
                       <div className="flex flex-wrap gap-2">
                         {events.length > 0 ? (
                           events.map((event, index) => (
                             <span
                               key={event.id || index}
-                              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 border border-gray-200 capitalize"
+                              className="inline-flex items-center px-3 py-0.5 rounded-full text-xs sm:text-sm font-medium bg-red-600 text-white border border-gray-200 capitalize"
                             >
                               {event.name}
                             </span>
@@ -386,25 +390,11 @@ const Event = () => {
                         )}
                       </div>
                     </div>
-
-
-
-                    <div className="flex items-center text-muted-foreground">
-
-                    </div>
                   </div>
-
-                  {/* <div className="flex flex-wrap items-center gap-3">
-                    <span className="px-4 py-2 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                      Registration Open
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      Deadline: {tournament?.deadline || "TBD"}
-                    </span>
-                  </div> */}
                 </div>
               </div>
             </div>
+
             {selectedEvent ? (
               <TabSection
                 tournament={tournament}

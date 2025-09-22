@@ -44,7 +44,9 @@ const Tournament = () => {
   //   }
   //  },[isOrganizerLoggedIn]);
 
-  const [activeTab, setActiveTab] = useState("basic-info");
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('tournamentActiveTab') || 'basic-info';
+  });
   // Modal editing state
   const [isEditing, setIsEditing] = useState(false);
 
@@ -322,7 +324,14 @@ _id : "68682f5e643f91a48cb952b1"
               className={`tournament-nav-item ${
                 activeTab === item.id ? "tournament-nav-active" : ""
               }`}
-              onClick={() => { if(item.id==='back'){ navigate('/organizer/tournaments')}else {   setActiveTab(item.id) }}}
+              onClick={() => {
+                if(item.id==='back'){
+                  navigate('/organizer/tournaments');
+                }else {
+                  setActiveTab(item.id);
+                  localStorage.setItem('tournamentActiveTab', item.id);
+                }
+              }}
             >
               {item.label}
             </button>

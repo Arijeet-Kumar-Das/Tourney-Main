@@ -16,6 +16,9 @@ router.get("/slider", sliderController.getImages);
 // Keep analytics open (no auth) but secure all other admin routes
 router.use("/analytics", analyticsRouter);
 
+
+router.post("/organizers/:id/impersonate", adminController.impersonateOrganizer);
+
 // Authentication middleware for remaining admin routes
 router.use(verifyAdminToken);
 router.use(logAdminActivity);
@@ -52,6 +55,8 @@ router.post(
   "/organizers/:id/revoke-approval",
   adminController.revokeAdminApproval
 );
+
+// Impersonation route
 
 // ==================== PLAYER ROUTES ====================
 router.post("/players", adminController.createPlayer);

@@ -120,19 +120,22 @@ const OrganizationsTable = () => {
     open: false,
     orgId: null,
     orgName: "",
-    action: "approve", // "approve" or "revoke"
+    action: "approve",
   });
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
+  const [viewDialog, setViewDialog] = useState({
+    open: false,
+    org: null,
+  });
 
   // API Service
   const apiRequest = async (endpoint, options = {}) => {
     try {
       const url = `${API_BASE_URL}${endpoint}`;
-
       const config = {
         headers: {
           "Content-Type": "application/json",
@@ -141,14 +144,11 @@ const OrganizationsTable = () => {
         },
         ...options,
       };
-
       const response = await fetch(url, config);
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.message || "API request failed");
       }
-
       return data;
     } catch (error) {
       console.error("API Error:", error);
@@ -159,26 +159,21 @@ const OrganizationsTable = () => {
   // Fetch Organizations
   const fetchOrganizations = async () => {
     if (!isLoggedIn || !token) return;
-
     try {
       setLoading(true);
       setError(null);
-
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: pagination.itemsPerPage.toString(),
         sortBy,
         ...(searchTerm && { search: searchTerm }),
         ...(adminVerificationFilter !== "all" && {
-          adminVerified:
-            adminVerificationFilter === "verified" ? "true" : "false",
+          adminVerified: adminVerificationFilter === "verified" ? "true" : "false",
         }),
-        isAccountVerified: "true", // Only fetch organizations with verified email
+        isAccountVerified: "true",
       });
-
       const response = await apiRequest(`/admin/organizers?${params}`);
-
-      setOrganizations(response.data);
+      setOrganizations(response.data || []);
       setPagination(response.pagination);
       setVerificationStats(response.verificationStats || {});
     } catch (error) {
@@ -193,10 +188,7 @@ const OrganizationsTable = () => {
   const handleDeleteOrganization = async (orgId) => {
     try {
       setLoading(true);
-      await apiRequest(`/admin/organizers/${orgId}`, {
-        method: "DELETE",
-      });
-
+      await apiRequest(`/admin/organizers/${orgId}`, { method: "DELETE" });
       showSnackbar("Organization deleted successfully", "success");
       setDeleteDialog({ open: false, orgId: null, orgName: "" });
       fetchOrganizations();
@@ -207,7 +199,7 @@ const OrganizationsTable = () => {
     }
   };
 
-  // Email Verification (optional: you may want to remove this if only verified orgs are shown)
+  // Email Verification (optional)
   const handleEmailVerification = async (orgId) => {
     try {
       setLoading(true);
@@ -215,7 +207,6 @@ const OrganizationsTable = () => {
         method: "POST",
         body: JSON.stringify({}),
       });
-
       showSnackbar("Email verified successfully", "success");
       fetchOrganizations();
     } catch (error) {
@@ -233,17 +224,14 @@ const OrganizationsTable = () => {
         action === "approve"
           ? `/admin/organizers/${orgId}/approve`
           : `/admin/organizers/${orgId}/revoke-approval`;
-
       await apiRequest(endpoint, {
         method: "POST",
         body: JSON.stringify({}),
       });
-
       const message =
         action === "approve"
           ? "Organization approved by admin"
           : "Admin approval revoked";
-
       showSnackbar(message, "success");
       setApprovalDialog({
         open: false,
@@ -282,25 +270,14 @@ const OrganizationsTable = () => {
     });
   };
 
-  // const formatEvents = (events) => {
-  //   if (!events) return [];
-  //   if (Array.isArray(events)) return events;
-  //   if (typeof events === "object" && events.name) return [events.name];
-  //   return [events.toString()];
-  // };
-
   const formatEvents = (events) => {
-  if (!events) return [];
-  if (Array.isArray(events)) {
-    // If array of objects, map to their names
-    return events.map(e => typeof e === "object" && e.name ? e.name : e.toString());
-  }
-  if (typeof events === "object" && events.name) return [events.name];
-  return [events.toString()];
-};
-
-
-
+    if (!events) return [];
+    if (Array.isArray(events)) {
+      return events.map(e => typeof e === "object" && e.name ? e.name : e.toString());
+    }
+    if (typeof events === "object" && events.name) return [events.name];
+    return [events.toString()];
+  };
 
   const getMemberAccessCount = (memberAccess) => {
     if (!memberAccess) return 0;
@@ -308,23 +285,13 @@ const OrganizationsTable = () => {
     return 1;
   };
 
-  // Get verification status for display
   const getVerificationStatus = (org) => {
     const emailVerified = org.isAccountVerified;
     const adminVerified = org.isVerifiedByAdmin;
-
     if (emailVerified && adminVerified) {
-      return {
-        status: "fully-verified",
-        label: "Fully Verified",
-        color: "success",
-      };
+      return { status: "fully-verified", label: "Fully Verified", color: "success" };
     } else if (emailVerified && !adminVerified) {
-      return {
-        status: "pending-admin",
-        label: "Pending Admin",
-        color: "warning",
-      };
+      return { status: "pending-admin", label: "Pending Admin", color: "warning" };
     } else if (!emailVerified && adminVerified) {
       return { status: "admin-only", label: "Admin Approved", color: "info" };
     } else {
@@ -336,16 +303,8 @@ const OrganizationsTable = () => {
   useEffect(() => {
     fetchOrganizations();
     // eslint-disable-next-line
-  }, [
-    currentPage,
-    searchTerm,
-    adminVerificationFilter,
-    sortBy,
-    isLoggedIn,
-    token,
-  ]);
+  }, [currentPage, searchTerm, adminVerificationFilter, sortBy, isLoggedIn, token]);
 
-  // Debounced search
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
       if (currentPage !== 1) {
@@ -354,7 +313,6 @@ const OrganizationsTable = () => {
         fetchOrganizations();
       }
     }, 500);
-
     return () => clearTimeout(delayedSearch);
     // eslint-disable-next-line
   }, [searchTerm]);
@@ -371,50 +329,23 @@ const OrganizationsTable = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
       <AnimatedPaper elevation={0}>
         {/* Header Section */}
-        <Box
-          sx={{
+        <Box sx={{
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
             color: "white",
             p: 4,
             position: "relative",
-          }}
-        >
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            justifyContent="space-between"
-            alignItems={{ xs: "flex-start", sm: "center" }}
-            spacing={2}
-          >
+          }}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={2}>
             <Box>
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 700,
-                  letterSpacing: "-0.5px",
-                  mb: 1,
-                }}
-              >
+              <Typography variant="h4" sx={{ fontWeight: 700, letterSpacing: "-0.5px", mb: 1 }}>
                 Organizations Management
               </Typography>
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  opacity: 0.9,
-                  fontWeight: 400,
-                }}
-              >
-                Manage and monitor {pagination.totalItems} registered
-                organizations
+              <Typography variant="subtitle1" sx={{ opacity: 0.9, fontWeight: 400 }}>
+                Manage and monitor {pagination.totalItems} registered organizations
               </Typography>
-
-              {/* Verification Stats */}
               {verificationStats.totalOrganizers && (
                 <Stack direction="row" spacing={3} sx={{ mt: 2, opacity: 0.9 }}>
                   <Typography variant="caption">
@@ -424,13 +355,11 @@ const OrganizationsTable = () => {
                     👤 Admin Verified: {verificationStats.adminVerified || 0}
                   </Typography>
                   <Typography variant="caption">
-                    ⏳ Pending Admin:{" "}
-                    {verificationStats.pendingAdminApproval || 0}
+                    ⏳ Pending Admin: {verificationStats.pendingAdminApproval || 0}
                   </Typography>
                 </Stack>
               )}
             </Box>
-
             <Stack direction="row" spacing={2}>
               <Button
                 variant="outlined"
@@ -465,9 +394,7 @@ const OrganizationsTable = () => {
                     backgroundColor: "rgba(255,255,255,0.3)",
                   },
                 }}
-                onClick={() => {
-                  showSnackbar("Add organization feature coming soon!", "info");
-                }}
+                onClick={() => showSnackbar("Add organization feature coming soon!", "info")}
               >
                 Add Organization
               </Button>
@@ -477,11 +404,7 @@ const OrganizationsTable = () => {
 
         {/* Enhanced Filters Section */}
         <Box sx={{ p: 3, backgroundColor: "grey.50" }}>
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={2}
-            alignItems="stretch"
-          >
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch">
             <TextField
               variant="outlined"
               placeholder="Search organizations, emails..."
@@ -504,7 +427,6 @@ const OrganizationsTable = () => {
                 ),
               }}
             />
-
             <FormControl size="small" sx={{ minWidth: 180 }}>
               <InputLabel>Admin Verification</InputLabel>
               <Select
@@ -521,7 +443,6 @@ const OrganizationsTable = () => {
                 <MenuItem value="unverified">⏳ Admin Pending</MenuItem>
               </Select>
             </FormControl>
-
             <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel>Sort By</InputLabel>
               <Select
@@ -592,7 +513,6 @@ const OrganizationsTable = () => {
             <TableBody>
               {organizations.map((org, index) => {
                 const verificationStatus = getVerificationStatus(org);
-
                 return (
                   <StyledTableRow
                     key={org._id}
@@ -604,38 +524,14 @@ const OrganizationsTable = () => {
                     {/* Organization Column */}
                     <TableCell>
                       <Stack direction="row" spacing={2} alignItems="center">
-                        <Avatar
-                          sx={{
-                            width: 48,
-                            height: 48,
-                            bgcolor: "primary.main",
-                            fontSize: "1.1rem",
-                            fontWeight: 700,
-                          }}
-                        >
+                        <Avatar sx={{ width: 48, height: 48, bgcolor: "primary.main", fontSize: "1.1rem", fontWeight: 700 }}>
                           {getInitials(org.fullName)}
                         </Avatar>
                         <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography
-                            variant="subtitle1"
-                            sx={{
-                              fontWeight: 600,
-                              lineHeight: 1.2,
-                              mb: 0.5,
-                            }}
-                            noWrap
-                          >
+                          <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.2, mb: 0.5 }} noWrap>
                             {org.fullName}
                           </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 0.5,
-                            }}
-                          >
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                             <Event fontSize="inherit" />
                             Joined {formatDate(org.createdAt)}
                           </Typography>
@@ -646,19 +542,9 @@ const OrganizationsTable = () => {
                     {/* Contact Column */}
                     <TableCell>
                       <Stack spacing={1}>
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                           <Email fontSize="small" color="action" />
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              maxWidth: 180,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                            title={org.email}
-                          >
+                          <Typography variant="body2" sx={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis" }} title={org.email}>
                             {org.email}
                           </Typography>
                         </Box>
@@ -670,14 +556,7 @@ const OrganizationsTable = () => {
 
                     {/* Tournament Column */}
                     <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 500,
-                          lineHeight: 1.3,
-                          maxWidth: 180,
-                        }}
-                      >
+                      <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.3, maxWidth: 180 }}>
                         {org.tournament?.name || "No tournament assigned"}
                       </Typography>
                     </TableCell>
@@ -705,9 +584,7 @@ const OrganizationsTable = () => {
                             />
                           ))}
                         {formatEvents(org.events).length > 2 && (
-                          <Tooltip
-                            title={formatEvents(org.events).slice(2).join(", ")}
-                          >
+                          <Tooltip title={formatEvents(org.events).slice(2).join(", ")}>
                             <Chip
                               label={`+${formatEvents(org.events).length - 2}`}
                               size="small"
@@ -724,18 +601,7 @@ const OrganizationsTable = () => {
 
                     {/* Team Size Column */}
                     <TableCell align="center">
-                      <Box
-                        sx={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 1,
-                          px: 2,
-                          py: 1,
-                          borderRadius: "20px",
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
-                        }}
-                      >
+                      <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1, px: 2, py: 1, borderRadius: "20px", backgroundColor: "primary.light", color: "primary.contrastText" }}>
                         <Group fontSize="small" />
                         <Typography variant="body2" fontWeight={600}>
                           {getMemberAccessCount(org.memberAccess)}
@@ -746,7 +612,6 @@ const OrganizationsTable = () => {
                     {/* Enhanced Verification Status Column */}
                     <TableCell align="center">
                       <Stack spacing={1} alignItems="center">
-                        {/* Overall Status */}
                         <Chip
                           label={verificationStatus.label}
                           color={verificationStatus.color}
@@ -754,61 +619,27 @@ const OrganizationsTable = () => {
                           variant="filled"
                           sx={{ fontWeight: 600 }}
                         />
-
-                        {/* Individual Status Indicators */}
                         <Stack direction="row" spacing={1}>
                           {/* Email Verification */}
-                          <Tooltip
-                            title={`Email ${
-                              org.isAccountVerified ? "Verified" : "Pending"
-                            }`}
-                          >
+                          <Tooltip title={`Email ${org.isAccountVerified ? "Verified" : "Pending"}`}>
                             <Chip
-                              icon={
-                                org.isAccountVerified ? (
-                                  <VerifiedUser />
-                                ) : (
-                                  <HourglassEmpty />
-                                )
-                              }
+                              icon={org.isAccountVerified ? <VerifiedUser /> : <HourglassEmpty />}
                               label="Email"
                               size="small"
-                              color={
-                                org.isAccountVerified ? "success" : "warning"
-                              }
+                              color={org.isAccountVerified ? "success" : "warning"}
                               variant="outlined"
                               sx={{ fontSize: "0.7rem" }}
-                              onClick={() =>
-                                !org.isAccountVerified &&
-                                handleEmailVerification(org._id)
-                              }
-                              style={{
-                                cursor: !org.isAccountVerified
-                                  ? "pointer"
-                                  : "default",
-                              }}
+                              onClick={() => !org.isAccountVerified && handleEmailVerification(org._id)}
+                              style={{ cursor: !org.isAccountVerified ? "pointer" : "default" }}
                             />
                           </Tooltip>
-
                           {/* Admin Verification */}
-                          <Tooltip
-                            title={`Admin ${
-                              org.isVerifiedByAdmin ? "Approved" : "Pending"
-                            }`}
-                          >
+                          <Tooltip title={`Admin ${org.isVerifiedByAdmin ? "Approved" : "Pending"}`}>
                             <Chip
-                              icon={
-                                org.isVerifiedByAdmin ? (
-                                  <AdminPanelSettings />
-                                ) : (
-                                  <Pending />
-                                )
-                              }
+                              icon={org.isVerifiedByAdmin ? <AdminPanelSettings /> : <Pending />}
                               label="Admin"
                               size="small"
-                              color={
-                                org.isVerifiedByAdmin ? "primary" : "warning"
-                              }
+                              color={org.isVerifiedByAdmin ? "primary" : "warning"}
                               variant="outlined"
                               sx={{ fontSize: "0.7rem" }}
                             />
@@ -821,111 +652,45 @@ const OrganizationsTable = () => {
                     <TableCell align="center">
                       <Stack spacing={1} alignItems="center">
                         {/* Main Actions */}
-                        <Stack
-                          direction="row"
-                          spacing={0.5}
-                          justifyContent="center"
-                        >
+                        <Stack direction="row" spacing={0.5} justifyContent="center">
                           <Tooltip title="View Details">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              sx={{
-                                "&:hover": {
-                                  backgroundColor: "primary.light",
-                                  color: "primary.contrastText",
-                                },
-                              }}
-                              onClick={() => {
-                                showSnackbar(
-                                  "View details feature coming soon!",
-                                  "info"
-                                );
-                              }}
+                            <IconButton size="small" color="primary" sx={{ "&:hover": { backgroundColor: "primary.light", color: "primary.contrastText" } }}
+                              onClick={() => setViewDialog({ open: true, org })}
                             >
                               <Visibility fontSize="small" />
                             </IconButton>
                           </Tooltip>
-
                           <Tooltip title="Edit">
-                            <IconButton
-                              size="small"
-                              color="secondary"
-                              sx={{
-                                "&:hover": {
-                                  backgroundColor: "secondary.light",
-                                  color: "secondary.contrastText",
-                                },
-                              }}
-                              onClick={() => {
-                                showSnackbar(
-                                  "Edit feature coming soon!",
-                                  "info"
-                                );
-                              }}
+                            <IconButton size="small" color="secondary" sx={{ "&:hover": { backgroundColor: "secondary.light", color: "secondary.contrastText" } }}
+                              onClick={() => showSnackbar("Edit feature coming soon!", "info")}
                             >
                               <Edit fontSize="small" />
                             </IconButton>
                           </Tooltip>
-
                           <Tooltip title="Delete">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              sx={{
-                                "&:hover": {
-                                  backgroundColor: "error.light",
-                                  color: "error.contrastText",
-                                },
-                              }}
-                              onClick={() => {
-                                setDeleteDialog({
-                                  open: true,
-                                  orgId: org._id,
-                                  orgName: org.fullName,
-                                });
-                              }}
+                            <IconButton size="small" color="error" sx={{ "&:hover": { backgroundColor: "error.light", color: "error.contrastText" } }}
+                              onClick={() => setDeleteDialog({ open: true, orgId: org._id, orgName: org.fullName })}
                             >
                               <Delete fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         </Stack>
-
                         {/* Admin Approval Actions */}
                         <Stack direction="row" spacing={0.5}>
                           {!org.isVerifiedByAdmin && org.isAccountVerified && (
                             <Tooltip title="Approve by Admin">
-                              <IconButton
-                                size="small"
-                                color="success"
-                                onClick={() => {
-                                  setApprovalDialog({
-                                    open: true,
-                                    orgId: org._id,
-                                    orgName: org.fullName,
-                                    action: "approve",
-                                  });
-                                }}
+                              <IconButton size="small" color="success"
+                                onClick={() => setApprovalDialog({ open: true, orgId: org._id, orgName: org.fullName, action: "approve" })}
                                 sx={{ fontSize: "0.8rem" }}
                               >
                                 <ThumbUp fontSize="small" />
                               </IconButton>
                             </Tooltip>
                           )}
-
                           {org.isVerifiedByAdmin && (
                             <Tooltip title="Revoke Admin Approval">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => {
-                                  setApprovalDialog({
-                                    open: true,
-                                    orgId: org._id,
-                                    orgName: org.fullName,
-                                    action: "revoke",
-                                  });
-                                }}
+                              <IconButton size="small" color="error"
+                                onClick={() => setApprovalDialog({ open: true, orgId: org._id, orgName: org.fullName, action: "revoke" })}
                                 sx={{ fontSize: "0.8rem" }}
                               >
                                 <ThumbDown fontSize="small" />
@@ -942,19 +707,118 @@ const OrganizationsTable = () => {
           </Table>
         </TableContainer>
 
-        {/* Empty State */}
-        {!loading && organizations.length === 0 && (
-          <Box sx={{ p: 6, textAlign: "center" }}>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              No organizations found
+        {/* View Details Dialog */}
+        <Dialog open={viewDialog.open} onClose={() => setViewDialog({ open: false, org: null })}>
+          <DialogTitle>Organization Details</DialogTitle>
+          <DialogContent dividers>
+            {viewDialog.org && (
+              <Stack spacing={2}>
+                <Typography><strong>Name:</strong> {viewDialog.org.fullName}</Typography>
+                <Typography><strong>Email:</strong> {viewDialog.org.email}</Typography>
+              </Stack>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setViewDialog({ open: false, org: null })}>Close</Button>
+            {viewDialog.org && (
+              <Button variant="contained" onClick={async () => {
+                try {
+                  // console.log(viewDialog.org._id);
+                  console.log(`${API_BASE_URL}/admin/organizers/${viewDialog.org._id}/impersonate`);
+                  const res = await fetch(`${API_BASE_URL}/admin/organizers/${viewDialog.org._id}/impersonate`, { method: "POST", credentials: "include",headers:{
+                    "Content-Type":"application/json",
+                }, });
+                  const data = await res.json();
+                  if (data.success) {
+                    window.open(`http://localhost:5173/organizer/home`);
+                  } else {
+                    showSnackbar(data.message || "Failed", "error");
+                  }
+                } catch (err) {
+                  showSnackbar(err.message || "Error", "error");
+                }
+              }}>Login as Organization</Button>
+            )}
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialog.open} onClose={() =>
+          setDeleteDialog({ open: false, orgId: null, orgName: "" })
+        }>
+          <DialogTitle>Confirm Delete</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete "{deleteDialog.orgName}"? This action cannot be undone.
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {searchTerm || adminVerificationFilter !== "all"
-                ? "Try adjusting your search or filter criteria"
-                : "Start by adding your first organization"}
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => setDeleteDialog({ open: false, orgId: null, orgName: "" })}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => handleDeleteOrganization(deleteDialog.orgId)}
+              color="error"
+              variant="contained"
+              disabled={loading}
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Admin Approval Confirmation Dialog */}
+        <Dialog open={approvalDialog.open} onClose={() =>
+          setApprovalDialog({ open: false, orgId: null, orgName: "", action: "approve" })
+        }>
+          <DialogTitle>
+            {approvalDialog.action === "approve"
+              ? "Confirm Admin Approval"
+              : "Confirm Revoke Approval"}
+          </DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to{" "}
+              {approvalDialog.action === "approve"
+                ? "approve"
+                : "revoke approval for"}{" "}
+              "{approvalDialog.orgName}"{" "}
+              {approvalDialog.action === "approve" ? "by admin" : ""}?
             </Typography>
-          </Box>
-        )}
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => setApprovalDialog({ open: false, orgId: null, orgName: "", action: "approve" })}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => handleAdminApproval(approvalDialog.orgId, approvalDialog.action)}
+              color={approvalDialog.action === "approve" ? "success" : "error"}
+              variant="contained"
+              disabled={loading}
+            >
+              {approvalDialog.action === "approve" ? "Approve" : "Revoke"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: "100%" }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
 
         {/* Footer */}
         <Divider />
@@ -1004,107 +868,6 @@ const OrganizationsTable = () => {
           </Stack>
         </Box>
       </AnimatedPaper>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialog.open}
-        onClose={() =>
-          setDeleteDialog({ open: false, orgId: null, orgName: "" })
-        }
-      >
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete "{deleteDialog.orgName}"? This
-            action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() =>
-              setDeleteDialog({ open: false, orgId: null, orgName: "" })
-            }
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => handleDeleteOrganization(deleteDialog.orgId)}
-            color="error"
-            variant="contained"
-            disabled={loading}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Admin Approval Confirmation Dialog */}
-      <Dialog
-        open={approvalDialog.open}
-        onClose={() =>
-          setApprovalDialog({
-            open: false,
-            orgId: null,
-            orgName: "",
-            action: "approve",
-          })
-        }
-      >
-        <DialogTitle>
-          {approvalDialog.action === "approve"
-            ? "Confirm Admin Approval"
-            : "Confirm Revoke Approval"}
-        </DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to{" "}
-            {approvalDialog.action === "approve"
-              ? "approve"
-              : "revoke approval for"}{" "}
-            "{approvalDialog.orgName}"{" "}
-            {approvalDialog.action === "approve" ? "by admin" : ""}?
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() =>
-              setApprovalDialog({
-                open: false,
-                orgId: null,
-                orgName: "",
-                action: "approve",
-              })
-            }
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() =>
-              handleAdminApproval(approvalDialog.orgId, approvalDialog.action)
-            }
-            color={approvalDialog.action === "approve" ? "success" : "error"}
-            variant="contained"
-            disabled={loading}
-          >
-            {approvalDialog.action === "approve" ? "Approve" : "Revoke"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </motion.div>
   );
 };

@@ -239,8 +239,24 @@ const Events = () => {
     setShowEditModal(false);
   };
 
-  const handleDeleteEvent = (eventId) => {
-    console.log('Delete event:', eventId);
+  const handleDeleteEvent = async (eventId) => {
+    if(!window.confirm("Are you sure you want to delete this event?")) return;
+    try{
+      const response = await fetch(`${backend_URL}/api/organizer/events/${eventId}`,{
+        method:"DELETE",
+        credentials:"include"
+      });
+      const data = await response.json();
+      if(data.success){
+        toast.success(data.message || "Event deleted");
+        fetchAllEvents();
+      }else{
+        toast.error(data.message || "Failed to delete event");
+      }
+    }catch(err){
+      console.error("Delete event error",err);
+      toast.error("Something went wrong");
+    }
   };
 
   const getStatusBadgeClass = (status) => {
@@ -360,7 +376,7 @@ const Events = () => {
                       </button>
                       <button 
                         className="events-action-btn events-delete-btn"
-                        onClick={() => handleDeleteEvent(event.id)}
+                        onClick={() => handleDeleteEvent(event._id)}
                         title="Delete Event"
                       >
                         <IoTrashOutline />

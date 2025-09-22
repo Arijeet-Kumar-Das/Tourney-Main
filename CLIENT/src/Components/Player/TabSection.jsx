@@ -93,10 +93,10 @@ const TabSection = ({ tournament, selectedEvent, description, events = [] }) => 
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 text-center font-semibold focus:outline-none transition-all duration-200
-              py-2 sm:py-2 md:py-3 
+              py-1 sm:py-1 md:py-1 
               text-base sm:text-lg md:text-xl
               ${activeTab === tab
-                ? 'bg-red-600 text-white rounded-tl-3xl rounded-tr-3xl  shadow-sm z-10 -mb-[2px] cursor-pointer transition-all duration-800'
+                ? 'bg-red-600 text-white  shadow-sm z-10 -mb-[2px] cursor-pointer transition-all duration-800'
                 : 'bg-transparent text-black hover:bg-red-100 rounded-tl-3xl rounded-tr-3xl cursor-pointer hover:text-red-600'}
             `}
             // style={{ borderBottom: activeTab === tab ? '3xl solid #e11d48' : 'none' }}

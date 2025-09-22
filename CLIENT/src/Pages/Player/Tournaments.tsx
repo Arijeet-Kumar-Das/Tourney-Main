@@ -133,7 +133,7 @@ const Tournaments = () => {
   const { selectedLocation } = useContext(AppContext) as AppContextType;
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'Upcoming' | 'Active' | 'Completed' | 'cancelled'>('all');
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'Upcoming' | 'Active' | 'Completed' | 'cancelled'>('Upcoming');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   // Add animation state
@@ -449,13 +449,13 @@ const Tournaments = () => {
                 {/* Search Bar */}
                 <div className="flex flex-col md:flex-row w-full md:items-center md:gap-4">
                   <div className="flex gap-2 flex-wrap mb-2 md:mb-0">
-                    <Button
+                    {/* <Button
                       variant={selectedStatus === 'all' ? 'default' : 'outline'}
                       onClick={() => setSelectedStatus('all')}
                       className="px-6 py-2"
                     >
                       All ({tournaments.length})
-                    </Button>
+                    </Button> */}
                     <Button
                       variant={selectedStatus === 'Upcoming' ? 'default' : 'outline'}
                       onClick={() => setSelectedStatus('Upcoming')}

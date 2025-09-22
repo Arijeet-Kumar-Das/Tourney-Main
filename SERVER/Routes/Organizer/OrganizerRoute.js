@@ -36,6 +36,7 @@ import {
   resetFixtureScores,
   changeOTP,
   updateEvent,
+  deleteEvent,
   loginWithGoogle,
   sendForgotPassOTP,
   verifyForgotPassOTP,
@@ -119,6 +120,9 @@ router.post(
 
 router.get("/updateTournamentStatus", updateTournamentStatus);
 router.get("/dashboard", organizerAuthMidlleware, getDashBoardData);
+
+// delete event
+router.delete("/events/:eventId", organizerAuthMidlleware, deleteEvent);
 
 // update event
 router.patch("/events/:eventId", organizerAuthMidlleware, updateEvent);

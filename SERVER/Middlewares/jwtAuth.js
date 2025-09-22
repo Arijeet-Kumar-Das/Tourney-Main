@@ -124,7 +124,7 @@ const setOrganizerTokenAndCookies = async (organizer, res) => {
   res.cookie("JWT_Organizer", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV !== "development",
-    sameSite: process.env.NODE_ENV !== "development" ? "none" : "strict",
+    sameSite: process.env.NODE_ENV !== "development" ? "none" : "lax",
     maxAge: 1 * 24 * 60 * 60 * 1000,
   });
 };

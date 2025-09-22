@@ -28,6 +28,7 @@
     "clsx": "^2.1.1",
     "dompurify": "^3.2.6",
     "framer-motion": "^12.23.0",
+    "jwt-encode": "^1.0.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.524.0",
     "mapbox-gl": "^3.13.0",

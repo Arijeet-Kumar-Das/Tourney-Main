@@ -45,7 +45,7 @@ const HomeTournCard = ({
       <div className="w-[270px] h-[440px] border bg-card text-card-foreground shadow-md rounded-3xl overflow-hidden">
         <div className="w-full h-full transition-transform hover:scale-105">
           {/* Image */}
-          <div className="relative w-full h-48 sm:h-56 md:h-64 overflow-hidden rounded-3xl">
+          <div className="relative w-full h-64 sm:h-64 md:h-64 overflow-hidden rounded-3xl">
             <img
               src={imageUrl}
               alt={title}

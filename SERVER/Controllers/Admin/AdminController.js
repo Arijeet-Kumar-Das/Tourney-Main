@@ -3,8 +3,27 @@ import PlayerModel from "../../Models/Player/PlayerModel.js";
 import Tournament from "../../Models/Organizer/Tournament.js";
 import Event from "../../Models/Organizer/Event.js";
 import bcrypt from "bcryptjs";
+import { setOrganizerTokenAndCookies } from "../../Middlewares/jwtAuth.js";
 
 const adminController = {
+  // ==================== ORGANIZER CONTROLLERS ====================
+
+  impersonateOrganizer: async (req, res) => {
+    try {
+      console.log('impersonate organizer');
+      const { id } = req.params;
+      console.log('impersonate organizer', id);
+      const organizer = await Organizer.findById(id);
+      if (!organizer) {
+        return res.status(404).json({ success: false, message: "Organizer not found" });
+      }
+      await setOrganizerTokenAndCookies(organizer, res);
+      res.status(200).json({ success: true, message: "Impersonation cookie set" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Error impersonating organizer", error: error.message });
+    }
+  },
+
   // ==================== ORGANIZER CONTROLLERS ====================
 
   createOrganizer: async (req, res) => {

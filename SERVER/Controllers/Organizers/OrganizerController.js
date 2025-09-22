@@ -991,6 +991,29 @@ export const updateEvent = async (req, res) => {
   }
 };
 
+// DELETE /api/organizer/events/:eventId
+export const deleteEvent = async (req, res) => {
+  try {
+    const organization = req.organizer;
+    if (!organization) {
+      return res.json({ success: false, message: "Session Ended Sign In Again Please" });
+    }
+
+    const { eventId } = req.params;
+    if (!eventId) return res.json({ success: false, message: "Event Id missing" });
+
+    const removed = await Events.findByIdAndDelete(eventId);
+    if (!removed) {
+      return res.json({ success: false, message: "Event not found" });
+    }
+
+    return res.json({ success: true, message: "Event deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting event", error);
+    return res.json({ success: false, message: "Error deleting event" });
+  }
+};
+
 // const createIndividual = async (req, res) => {
 //   try {
 //     const organization = req.organizer;

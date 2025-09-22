@@ -612,6 +612,7 @@ const createGroupTeamPlayer = async (req, res) => {
         message: `Tournament and Event Id's are mandatory for Creating Players`,
       });
     }
+
     const tournament = await Tournament.findById(TournamentId);
     const event = await Event.findById(eventId);
     if (!tournament || !event) {
@@ -620,48 +621,49 @@ const createGroupTeamPlayer = async (req, res) => {
         message: `Tournament (Event) Not Found`,
       });
     }
+
     const { teamName, members, entry } = req.body;
     if (!teamName || !members || !Array.isArray(members) || members.length === 0) {
-      return res.json({ success: false, message: `All Fields are mandatory` });
+      return res.json({ success: false, message: `Team name and members are mandatory` });
     }
+
     let FinalMembers = [];
     for (const member of members) {
-      const { name, email, mobile, academyName, feesPaid } = member;
-      if (!name || !email || !mobile || !academyName) {
+      const { customFields, feesPaid } = member;
+      if (!customFields || Object.keys(customFields).length === 0) {
         return res.json({
           success: false,
-          message: `All Fields are mandatory to Fill`,
+          message: `Custom fields are required for each member`,
         });
       }
+
       FinalMembers.push({
-        name,
-        email,
-        mobile,
-        academyName,
-        feesPaid: typeof feesPaid === 'boolean' ? feesPaid : false,
-        customFields: member.customFields || {},
+        name: customFields?.name || "Unknown",
+        email: customFields?.email || `unknown_${Date.now()}@example.com`,
+        mobile: customFields?.mobile || "0000000000",
+        academyName: customFields?.academyName || "Unknown",
+        feesPaid: typeof feesPaid === "boolean" ? feesPaid : false,
+        customFields,
       });
     }
-    if (FinalMembers.length === 0) {
-      return res.json({
-        success: false,
-        message: "No valid players found in the team",
-      });
-    }
+
     const newTeam = await TeamGroup.create({
       teamName,
       members: FinalMembers,
-      entry: typeof entry === 'string' ? entry : 'online',
+      entry: typeof entry === "string" ? entry : "online",
       event: event.name,
       eventId,
       tournamentId: TournamentId,
       dateAndTime: new Date().toISOString(),
     });
+
     tournament.participantsGroup.push(newTeam._id);
     await tournament.save();
+
     event.participantsGroup.push(newTeam._id);
     event.numberOfParticipants = event.numberOfParticipants + 1;
     await event.save();
+
     return res.json({
       success: true,
       message: "New Team Created Successfully",
@@ -676,6 +678,7 @@ const createGroupTeamPlayer = async (req, res) => {
     });
   }
 };
+
 
 // Public: Register an individual team for an event (player)
 const createIndividualTeamPlayer = async (req, res) => {
@@ -696,21 +699,22 @@ const createIndividualTeamPlayer = async (req, res) => {
       });
     }
     const { name, email, mobile, academyName, feesPaid, customFields, entry } = req.body;
-    if (!name || !email || !mobile || !academyName) {
-      return res.json({
-        success: false,
-        message: `All Fields are mandatory to Fill`,
-      });
-    }
+    // if (!name || !email || !mobile || !academyName) {
+    //   return res.json({
+    //     success: false,
+    //     message: `All Fields are mandatory to Fill`,
+    //   });
+    // }
     // Try to find player by email (optional for public registration)
     let playerObj = await PlayerModel.findOne({ email });
     let playerId = playerObj ? playerObj._id : undefined;
     const newIndividual = await TeamIndividual.create({
       player: playerId, // can be undefined
-      name,
-      email,
-      mobile,
-      academyName,
+      name: customFields?.name || "Unknown",
+      email: customFields?.email || `unknown_${Date.now()}@example.com`,
+      mobile: customFields?.mobile || "0000000000",
+      academyName: customFields?.academyName || "Unknown",
+
       feesPaid: typeof feesPaid === 'boolean' ? feesPaid : false,
       tournamentId: TournamentId,
       event: event.name,
